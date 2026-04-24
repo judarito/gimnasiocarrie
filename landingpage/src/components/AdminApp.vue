@@ -150,6 +150,7 @@ function addFooterLink() {
 
 function selectPost(post) {
   activeTab.value = 'posts'
+  postView.value = 'detail'
   loadPostDetail(post.id)
 }
 
@@ -178,9 +179,6 @@ async function loadPosts(page = postPagination.value.page) {
       totalPages: payload.totalPages,
     }
 
-    if (!postEditor.value.id && posts.value[0]) {
-      await loadPostDetail(posts.value[0].id, { keepListVisible: true })
-    }
   } catch (error) {
     authError.value = error.message
   } finally {
@@ -904,7 +902,7 @@ function slugify(value) {
 
 .admin__posts {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
@@ -984,7 +982,7 @@ function slugify(value) {
 }
 
 .admin__back-button {
-  display: none;
+  display: inline-flex;
   border: 0;
   background: transparent;
   color: var(--color-blue);
@@ -1076,22 +1074,18 @@ function slugify(value) {
   }
 }
 
+.admin__posts-list--hidden,
+.admin__post-editor--hidden {
+  display: none;
+}
+
+.admin__post-editor {
+  padding-left: 0;
+}
+
 @media (max-width: 860px) {
   .admin__posts {
     grid-template-columns: 1fr;
-  }
-
-  .admin__posts-list--hidden,
-  .admin__post-editor--hidden {
-    display: none;
-  }
-
-  .admin__back-button {
-    display: inline-flex;
-  }
-
-  .admin__post-editor {
-    padding-left: 0;
   }
 }
 

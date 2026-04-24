@@ -57,6 +57,20 @@ Para subida de imágenes en el panel admin, define además:
 - La cache se invalida cuando se guarda una sección del sitio o cuando se crea, actualiza o elimina una noticia/evento.
 - La respuesta incluye la cabecera `X-Cache` con `MISS` o `HIT`.
 
+## Patrón de navegación: lista → detalle
+
+Todos los módulos que muestran colecciones (noticias, eventos, programas, galería, etc.) deben seguir este flujo:
+
+1. **Vista de lista** — se muestra por defecto. Cada ítem muestra solo información mínima: imagen, título y extracto.
+2. **Vista de detalle** — se activa al seleccionar un ítem de la lista. Muestra el contenido completo.
+3. El usuario puede volver a la lista desde el detalle (botón "Volver" o equivalente).
+
+No se debe mostrar el detalle directamente al cargar la sección. Este patrón aplica a:
+
+- Noticias
+- Eventos
+- Cualquier otro módulo con listado que se agregue en el futuro
+
 ## Notas
 
 - Si no defines `VITE_API_BASE_URL`, el frontend usa rutas relativas como `/api/...`.
