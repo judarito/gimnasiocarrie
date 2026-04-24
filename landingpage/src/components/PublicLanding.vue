@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { cloneDefaultPosts, cloneDefaultSiteData, mergeSiteData } from '../content/defaultSiteData.js'
 import { getPublicSite } from '../lib/api.js'
 import AboutSection from './AboutSection.vue'
@@ -14,11 +14,25 @@ const settings = ref(cloneDefaultSiteData())
 const posts = ref(cloneDefaultPosts())
 const loading = ref(true)
 const error = ref('')
+const showScrollTop = ref(false)
+
+function onScroll() {
+  showScrollTop.value = window.scrollY > 400
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 const news = computed(() => posts.value.filter((post) => post.type === 'news'))
 const events = computed(() => posts.value.filter((post) => post.type === 'event'))
 
-onMounted(loadSite)
+onMounted(() => {
+  loadSite()
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
 
 async function loadSite() {
   loading.value = true
@@ -63,6 +77,15 @@ async function loadSite() {
     <div v-if="loading" class="public-loading">
       <span></span>
     </div>
+
+    <button
+      v-if="showScrollTop"
+      class="scroll-top"
+      aria-label="Volver arriba"
+      @click="scrollToTop"
+    >
+      ↑
+    </button>
   </div>
 </template>
 
@@ -104,5 +127,29 @@ async function loadSite() {
   to {
     transform: rotate(360deg);
   }
+}
+
+.scroll-top {
+  position: fixed;
+  right: 18px;
+  bottom: 76px;
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(16, 42, 86, 0.9);
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.scroll-top:hover {
+  background: rgba(38, 118, 227, 0.95);
+  transform: translateY(-2px);
 }
 </style>
