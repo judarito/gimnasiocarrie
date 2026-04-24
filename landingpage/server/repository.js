@@ -370,6 +370,26 @@ export async function deletePost(id) {
   })
 }
 
+export async function listContacts({ page = 1, pageSize = 20 } = {}) {
+  const offset = (page - 1) * pageSize
+  const [rows, count] = await Promise.all([
+    db.execute({
+      sql: 'SELECT id, name, email, message, created_at FROM contacts ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      args: [pageSize, offset],
+    }),
+    db.execute('SELECT COUNT(*) as total FROM contacts'),
+  ])
+
+  const total = Number(count.rows[0].total)
+  return {
+    items: rows.rows,
+    page,
+    pageSize,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  }
+}
+
 export async function createContact(contact) {
   await db.execute({
     sql: `

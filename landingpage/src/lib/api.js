@@ -62,6 +62,11 @@ export function getAdminSite() {
   return request('/api/admin/site')
 }
 
+export function getAdminContacts({ page = 1, pageSize = 20 } = {}) {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  return request(`/api/admin/contacts?${params.toString()}`)
+}
+
 export function getAdminPosts({ page = 1, pageSize = 10, type = '' } = {}) {
   const params = new URLSearchParams({
     page: String(page),

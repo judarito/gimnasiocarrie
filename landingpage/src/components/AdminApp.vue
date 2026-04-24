@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { cloneDefaultSiteData, mergeSiteData } from '../content/defaultSiteData.js'
 import AdminImageField from './AdminImageField.vue'
 import {
   createAdminPost,
   deleteAdminPost,
+  getAdminContacts,
   getAdminPost,
   getAdminPosts,
   getAdminSite,
@@ -25,6 +26,7 @@ const tabs = [
   { id: 'footer', label: 'Footer' },
   { id: 'newsSection', label: 'Noticias' },
   { id: 'posts', label: 'Eventos y noticias' },
+  { id: 'messages', label: 'Mensajes' },
 ]
 
 const form = ref(cloneDefaultSiteData())
@@ -53,6 +55,10 @@ const credentials = ref({
   email: '',
   password: '',
 })
+
+const contacts = ref([])
+const contactsLoading = ref(false)
+const contactsPagination = ref({ page: 1, pageSize: 20, total: 0, totalPages: 1 })
 
 const postEditor = ref(createEmptyPost())
 
@@ -269,6 +275,39 @@ async function removePost() {
   } finally {
     deletingPost.value = false
   }
+}
+
+async function loadContacts(page = contactsPagination.value.page) {
+  contactsLoading.value = true
+  try {
+    const payload = await getAdminContacts({ page, pageSize: contactsPagination.value.pageSize })
+    contacts.value = payload.items || []
+    contactsPagination.value = {
+      page: payload.page,
+      pageSize: payload.pageSize,
+      total: payload.total,
+      totalPages: payload.totalPages,
+    }
+  } catch (error) {
+    authError.value = error.message
+  } finally {
+    contactsLoading.value = false
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'messages' && user.value) loadContacts(1)
+})
+
+function formatDateTime(value) {
+  if (!value) return ''
+  return new Date(value).toLocaleString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function clone(value) {
@@ -741,6 +780,41 @@ function slugify(value) {
               </div>
             </div>
           </div>
+          <div v-else-if="activeTab === 'messages'" class="admin__section">
+            <h2>Mensajes de contacto</h2>
+            <p v-if="contactsLoading" class="admin__muted">Cargando mensajes...</p>
+            <p v-else-if="!contacts.length" class="admin__muted">No hay mensajes todavía.</p>
+            <div v-else class="admin__stack">
+              <div v-for="msg in contacts" :key="msg.id" class="admin__array-card admin__message-card">
+                <div class="admin__message-meta">
+                  <strong>{{ msg.name }}</strong>
+                  <a :href="`mailto:${msg.email}`" class="admin__message-email">{{ msg.email }}</a>
+                  <span class="admin__muted">{{ formatDateTime(msg.created_at) }}</span>
+                </div>
+                <p class="admin__message-body">{{ msg.message }}</p>
+              </div>
+            </div>
+            <div v-if="contactsPagination.totalPages > 1" class="admin__pagination">
+              <button
+                type="button"
+                class="button button--secondary"
+                :disabled="contactsPagination.page <= 1 || contactsLoading"
+                @click="loadContacts(contactsPagination.page - 1)"
+              >
+                Anterior
+              </button>
+              <span>Página {{ contactsPagination.page }} de {{ contactsPagination.totalPages }}</span>
+              <button
+                type="button"
+                class="button button--secondary"
+                :disabled="contactsPagination.page >= contactsPagination.totalPages || contactsLoading"
+                @click="loadContacts(contactsPagination.page + 1)"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+
         </section>
       </div>
     </div>
@@ -1044,6 +1118,33 @@ function slugify(value) {
 .admin__message--error {
   background: rgba(255, 80, 71, 0.12);
   color: #c3423b;
+}
+
+.admin__message-card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.admin__message-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin__message-meta strong {
+  color: var(--color-blue-dark);
+}
+
+.admin__message-email {
+  color: var(--color-blue);
+  font-weight: 700;
+}
+
+.admin__message-body {
+  color: var(--color-text);
+  white-space: pre-line;
+  line-height: 1.6;
 }
 
 .admin__button-danger {

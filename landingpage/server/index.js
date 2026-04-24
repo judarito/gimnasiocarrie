@@ -15,6 +15,7 @@ import { databaseUrl } from './db.js'
 import { isCloudinaryConfigured, uploadImageBuffer } from './cloudinary.js'
 import {
   createContact,
+  listContacts,
   createPost,
   createSession,
   deletePost,
@@ -230,6 +231,17 @@ app.put('/api/admin/site/:key', requireAuth, async (request, response, next) => 
     const savedValue = await updateSiteSetting(key, value)
     invalidatePublicSiteCache()
     response.json({ key, value: savedValue })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/admin/contacts', requireAuth, async (request, response, next) => {
+  try {
+    const page = Number(request.query.page || 1)
+    const pageSize = Number(request.query.pageSize || 20)
+    const result = await listContacts({ page, pageSize })
+    response.json(result)
   } catch (error) {
     next(error)
   }
