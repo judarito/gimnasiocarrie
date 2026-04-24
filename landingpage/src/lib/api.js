@@ -1,0 +1,117 @@
+const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
+function buildUrl(path) {
+  if (!apiBaseUrl) return path
+  return `${apiBaseUrl}${path}`
+}
+
+async function request(url, options = {}) {
+  const isFormData = options.body instanceof FormData
+  const response = await fetch(buildUrl(url), {
+    credentials: 'include',
+    headers: isFormData
+      ? { ...(options.headers || {}) }
+      : {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+    ...options,
+  })
+
+  const contentType = response.headers.get('content-type') || ''
+  const payload = contentType.includes('application/json')
+    ? await response.json()
+    : null
+
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Ocurrió un error inesperado.')
+  }
+
+  return payload
+}
+
+export function getPublicSite() {
+  return request('/api/public/site')
+}
+
+export function submitContact(contact) {
+  return request('/api/public/contacts', {
+    method: 'POST',
+    body: JSON.stringify(contact),
+  })
+}
+
+export function login(credentials) {
+  return request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  })
+}
+
+export function logout() {
+  return request('/api/auth/logout', {
+    method: 'POST',
+  })
+}
+
+export function getSession() {
+  return request('/api/auth/me')
+}
+
+export function getAdminSite() {
+  return request('/api/admin/site')
+}
+
+export function getAdminPosts({ page = 1, pageSize = 10, type = '' } = {}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  })
+
+  if (type) {
+    params.set('type', type)
+  }
+
+  return request(`/api/admin/posts?${params.toString()}`)
+}
+
+export function getAdminPost(id) {
+  return request(`/api/admin/posts/${id}`)
+}
+
+export function saveSection(key, value) {
+  return request(`/api/admin/site/${key}`, {
+    method: 'PUT',
+    body: JSON.stringify({ value }),
+  })
+}
+
+export function createAdminPost(post) {
+  return request('/api/admin/posts', {
+    method: 'POST',
+    body: JSON.stringify(post),
+  })
+}
+
+export function updateAdminPost(id, post) {
+  return request(`/api/admin/posts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(post),
+  })
+}
+
+export function deleteAdminPost(id) {
+  return request(`/api/admin/posts/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export function uploadAdminImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return request('/api/admin/uploads', {
+    method: 'POST',
+    body: formData,
+  })
+}

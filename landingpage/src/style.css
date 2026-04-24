@@ -1,0 +1,234 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --color-blue: #2676e3;
+  --color-blue-dark: #102a56;
+  --color-blue-soft: #eef6ff;
+  --color-green: #68b738;
+  --color-red: #ff5047;
+  --color-yellow: #ffc938;
+  --color-cream: #fffaf1;
+  --color-white: #ffffff;
+  --color-text: #24314f;
+  --color-muted: #60708f;
+  --color-border: rgba(38, 118, 227, 0.1);
+  --shadow-soft: 0 24px 60px rgba(29, 63, 115, 0.12);
+  --shadow-card: 0 18px 36px rgba(25, 61, 112, 0.1);
+  --radius-xl: 36px;
+  --radius-lg: 28px;
+  --radius-md: 20px;
+  --radius-sm: 14px;
+  --container: min(1160px, calc(100vw - 32px));
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  font-family: 'Nunito Sans', 'Trebuchet MS', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 28%, #fbfdff 68%, #f7fbff 100%);
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: auto auto 0 -96px;
+  width: 220px;
+  height: 220px;
+  background: rgba(38, 118, 227, 0.05);
+  border-radius: 42% 58% 56% 44%;
+  filter: blur(2px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::after {
+  inset: 22% -88px auto auto;
+  background: rgba(38, 118, 227, 0.06);
+  border-radius: 62% 38% 48% 52%;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.container {
+  width: var(--container);
+  margin: 0 auto;
+}
+
+.section {
+  position: relative;
+  padding: 44px 0;
+}
+
+.section-title {
+  font-family: 'Baloo 2', 'Trebuchet MS', cursive;
+  font-size: clamp(2rem, 3vw, 3.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  color: var(--color-blue-dark);
+}
+
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 201, 56, 0.2);
+  color: #cf8b00;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.section-copy {
+  max-width: 580px;
+  margin-top: 0.9rem;
+  font-size: 1.05rem;
+  color: var(--color-muted);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 54px;
+  padding: 0.9rem 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 800;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background-color 0.25s ease,
+    color 0.25s ease;
+  cursor: pointer;
+}
+
+.button:hover {
+  transform: translateY(-2px);
+}
+
+.button svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.button--primary {
+  background: var(--color-blue);
+  color: var(--color-white);
+  box-shadow: 0 18px 32px rgba(38, 118, 227, 0.25);
+}
+
+.button--secondary {
+  background: var(--color-white);
+  color: var(--color-green);
+  box-shadow: inset 0 0 0 2px rgba(104, 183, 56, 0.5);
+}
+
+.card-surface {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px);
+}
+
+.puzzle-piece {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  transform: rotate(18deg);
+}
+
+.puzzle-piece::before,
+.puzzle-piece::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+.puzzle-piece::before {
+  top: -10px;
+  left: 25px;
+  background: inherit;
+}
+
+.puzzle-piece::after {
+  right: -10px;
+  top: 25px;
+  background: inherit;
+}
+
+.dotted-path {
+  position: absolute;
+  border: 3px dashed rgba(255, 193, 7, 0.85);
+  border-color: rgba(255, 193, 7, 0.85) transparent transparent transparent;
+  border-radius: 50%;
+}
+
+@media (max-width: 920px) {
+  .section {
+    padding: 36px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --container: min(100vw - 24px, 1000px);
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .section-title {
+    line-height: 1.03;
+  }
+}
