@@ -21,6 +21,8 @@ const navItems = [
   { label: 'Noticias', href: '#noticias' },
   { label: 'Contacto', href: '#contacto' },
 ]
+
+const adminNavItem = { label: 'Admin', href: '/admin/login' }
 </script>
 
 <template>
@@ -41,6 +43,9 @@ const navItems = [
           class="hero__nav-link"
         >
           {{ item.label }}
+        </a>
+        <a :href="adminNavItem.href" class="hero__nav-link hero__nav-link--admin">
+          {{ adminNavItem.label }}
         </a>
       </nav>
 
@@ -181,6 +186,17 @@ const navItems = [
 
 .hero__nav-link:hover::after {
   transform: scaleX(1);
+}
+
+.hero__nav-link--admin {
+  color: var(--color-muted);
+  font-weight: 500;
+  font-size: 0.9em;
+  opacity: 0.6;
+}
+
+.hero__nav-link--admin:hover {
+  opacity: 1;
 }
 
 .hero__actions {
