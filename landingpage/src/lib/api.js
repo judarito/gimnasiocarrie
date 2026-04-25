@@ -1,3 +1,7 @@
+import { ref } from 'vue'
+
+export const pendingRequests = ref(0)
+
 const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 function buildUrl(path) {
@@ -5,29 +9,83 @@ function buildUrl(path) {
   return `${apiBaseUrl}${path}`
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const RETRY_CONFIG = {
+  retries: Number(import.meta.env.VITE_RETRY_RETRIES ?? 3),
+  backoff: Number(import.meta.env.VITE_RETRY_BACKOFF_MS ?? 800),
+  timeout: Number(import.meta.env.VITE_RETRY_TIMEOUT_MS ?? 10000),
+}
+
+// GET es idempotente: se puede reintentar. POST/PUT/DELETE tienen side effects: no.
+function isIdempotent(method = 'GET') {
+  return method.toUpperCase() === 'GET'
+}
+
+// Reintenta solo en errores de red o 5xx. Los 4xx (auth, validación) fallan de inmediato.
+function isRetryable(error) {
+  return error instanceof TypeError || error.status >= 500
+}
+
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), RETRY_CONFIG.timeout)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function request(url, options = {}) {
   const isFormData = options.body instanceof FormData
-  const response = await fetch(buildUrl(url), {
+  const fetchOptions = {
     credentials: 'include',
     headers: isFormData
       ? { ...(options.headers || {}) }
-      : {
-          'Content-Type': 'application/json',
-          ...(options.headers || {}),
-        },
+      : { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
-  })
-
-  const contentType = response.headers.get('content-type') || ''
-  const payload = contentType.includes('application/json')
-    ? await response.json()
-    : null
-
-  if (!response.ok) {
-    throw new Error(payload?.error || 'Ocurrió un error inesperado.')
   }
 
-  return payload
+  const maxAttempts = isIdempotent(options.method) ? RETRY_CONFIG.retries + 1 : 1
+
+  pendingRequests.value++
+  let lastError
+  try {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await sleep(RETRY_CONFIG.backoff * Math.pow(2, attempt - 1)) // 800ms, 1600ms, 3200ms
+    }
+
+    try {
+      const response = await fetchWithTimeout(buildUrl(url), fetchOptions)
+      const contentType = response.headers.get('content-type') || ''
+      const payload = contentType.includes('application/json') ? await response.json() : null
+
+      if (!response.ok) {
+        const err = new Error(payload?.error || 'Ocurrió un error inesperado.')
+        err.status = response.status
+        if (!isRetryable(err)) throw err
+        lastError = err
+        continue
+      }
+
+      return payload
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        error.message = 'La solicitud tardó demasiado. Intenta de nuevo.'
+      }
+      if (!isRetryable(error)) throw error
+      lastError = error
+    }
+  }
+
+  throw lastError
+  } finally {
+    pendingRequests.value--
+  }
 }
 
 export function getPublicSite() {
@@ -35,23 +93,15 @@ export function getPublicSite() {
 }
 
 export function submitContact(contact) {
-  return request('/api/public/contacts', {
-    method: 'POST',
-    body: JSON.stringify(contact),
-  })
+  return request('/api/public/contacts', { method: 'POST', body: JSON.stringify(contact) })
 }
 
 export function login(credentials) {
-  return request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  })
+  return request('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) })
 }
 
 export function logout() {
-  return request('/api/auth/logout', {
-    method: 'POST',
-  })
+  return request('/api/auth/logout', { method: 'POST' })
 }
 
 export function getSession() {

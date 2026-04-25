@@ -10,6 +10,38 @@ import HeroSection from './HeroSection.vue'
 import NewsEventsSection from './NewsEventsSection.vue'
 import ProgramsSection from './ProgramsSection.vue'
 
+const CACHE_KEY = 'gc_site_v1'
+const CACHE_TTL = Number(import.meta.env.VITE_CACHE_TTL_MS ?? 24 * 60 * 60 * 1000) // 24h por defecto
+
+function saveCache(payload) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ payload, savedAt: Date.now() }))
+  } catch {}
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const { payload, savedAt } = JSON.parse(raw)
+    if (Date.now() - savedAt > CACHE_TTL) {
+      localStorage.removeItem(CACHE_KEY)
+      return null
+    }
+    return payload
+  } catch {
+    return null
+  }
+}
+
+function applyPayload(payload) {
+  settings.value = mergeSiteData(payload.settings || {})
+  posts.value = [
+    ...(payload.posts?.events || []),
+    ...(payload.posts?.news || []),
+  ]
+}
+
 const settings = ref(cloneDefaultSiteData())
 const posts = ref(cloneDefaultPosts())
 const loading = ref(true)
@@ -40,13 +72,15 @@ async function loadSite() {
 
   try {
     const payload = await getPublicSite()
-    settings.value = mergeSiteData(payload.settings || {})
-    posts.value = [
-      ...(payload.posts?.events || []),
-      ...(payload.posts?.news || []),
-    ]
+    saveCache(payload)
+    applyPayload(payload)
   } catch (loadError) {
-    error.value = loadError.message
+    const cached = loadCache()
+    if (cached) {
+      applyPayload(cached)
+    } else {
+      error.value = loadError.message
+    }
   } finally {
     loading.value = false
   }
@@ -74,9 +108,6 @@ async function loadSite() {
     </main>
     <FooterSection :site="settings.site" :footer="settings.footer" />
 
-    <div v-if="loading" class="public-loading">
-      <span></span>
-    </div>
 
     <button
       v-if="showScrollTop"
@@ -101,33 +132,6 @@ async function loadSite() {
   font-weight: 700;
 }
 
-.public-loading {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  width: 46px;
-  height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(16, 42, 86, 0.9);
-}
-
-.public-loading span {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.35);
-  border-top-color: white;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .scroll-top {
   position: fixed;
