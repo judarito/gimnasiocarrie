@@ -164,10 +164,11 @@ app.post('/api/auth/login', async (request, response, next) => {
       expiresAt,
     })
 
+    const isProduction = process.env.NODE_ENV === 'production'
     response.cookie(SESSION_COOKIE, sessionToken, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
       expires: expiresAt,
       path: '/',
     })
@@ -191,7 +192,12 @@ app.post('/api/auth/logout', async (request, response, next) => {
       await deleteSession(hashSessionToken(token))
     }
 
-    response.clearCookie(SESSION_COOKIE, { path: '/' })
+    const isProduction = process.env.NODE_ENV === 'production'
+    response.clearCookie(SESSION_COOKIE, {
+      path: '/',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+    })
     response.json({ ok: true })
   } catch (error) {
     next(error)
