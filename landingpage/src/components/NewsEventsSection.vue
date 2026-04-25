@@ -1,37 +1,40 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
-  section: {
-    type: Object,
-    required: true,
-  },
-  news: {
-    type: Array,
-    default: () => [],
-  },
-  events: {
-    type: Array,
-    default: () => [],
-  },
+  section: { type: Object, required: true },
+  news: { type: Array, default: () => [] },
+  events: { type: Array, default: () => [] },
 })
 
 const selectedItem = ref(null)
 
-function selectItem(post) {
-  selectedItem.value = post
+// Más recientes primero: por eventDate desc, sin fecha al final
+function byRecent(a, b) {
+  if (!a.eventDate && !b.eventDate) return 0
+  if (!a.eventDate) return 1
+  if (!b.eventDate) return -1
+  return new Date(b.eventDate) - new Date(a.eventDate)
 }
 
-function clearSelection() {
-  selectedItem.value = null
-}
+const sortedEvents = computed(() => [...props.events].sort(byRecent))
+const sortedNews = computed(() => [...props.news].sort(byRecent))
+
+// Carruseles independientes
+const eventIdx = ref(0)
+const newsIdx = ref(0)
+const VISIBLE = 1
+
+function canPrev(idx) { return idx > 0 }
+function canNext(idx, list) { return idx + VISIBLE < list.length }
+
+function selectItem(post) { selectedItem.value = post }
+function clearSelection() { selectedItem.value = null }
 
 function formatDate(value) {
   if (!value) return ''
   return new Date(value).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+    day: '2-digit', month: 'short', year: 'numeric',
   })
 }
 </script>
@@ -45,11 +48,9 @@ function formatDate(value) {
         <p class="section-copy">{{ props.section.description }}</p>
       </div>
 
-      <!-- Vista de detalle -->
+      <!-- Vista detalle -->
       <div v-if="selectedItem" class="news-events__detail card-surface">
-        <button class="news-events__back" @click="clearSelection">
-          ← Volver
-        </button>
+        <button class="news-events__back" @click="clearSelection">← Volver</button>
         <img
           v-if="selectedItem.imageUrl"
           :src="selectedItem.imageUrl"
@@ -70,61 +71,81 @@ function formatDate(value) {
         </div>
       </div>
 
-      <!-- Vista de lista -->
-      <div v-else class="news-events__grid">
+      <!-- Vista carruseles -->
+      <div v-else class="news-events__columns">
+
+        <!-- Eventos -->
         <div class="news-events__column">
           <div class="news-events__column-header">
             <h3>Eventos</h3>
+            <div class="news-events__arrows">
+              <button class="ne-arrow" :disabled="!canPrev(eventIdx)" @click="eventIdx--" aria-label="Anterior">‹</button>
+              <button class="ne-arrow" :disabled="!canNext(eventIdx, sortedEvents)" @click="eventIdx++" aria-label="Siguiente">›</button>
+            </div>
           </div>
 
-          <article
-            v-for="post in props.events"
-            :key="post.id"
-            class="news-events__card card-surface"
-            @click="selectItem(post)"
-          >
-            <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" class="news-events__image" />
-            <div class="news-events__body">
-              <span class="news-events__badge news-events__badge--event">
-                {{ formatDate(post.eventDate) || 'Próximamente' }}
-              </span>
-              <h4>{{ post.title }}</h4>
-              <p>{{ post.excerpt }}</p>
-              <small v-if="post.location">{{ post.location }}</small>
+          <div class="news-events__track-wrap">
+            <div class="news-events__track" :style="{ transform: `translateX(calc(-${eventIdx} * (100% + 0.75rem)))` }">
+              <article
+                v-for="post in sortedEvents"
+                :key="post.id"
+                class="news-events__card card-surface"
+                @click="selectItem(post)"
+              >
+                <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" class="news-events__image" />
+                <div class="news-events__body">
+                  <span class="news-events__badge news-events__badge--event">
+                    {{ formatDate(post.eventDate) || 'Próximamente' }}
+                  </span>
+                  <h4>{{ post.title }}</h4>
+                  <p>{{ post.excerpt }}</p>
+                  <small v-if="post.location">{{ post.location }}</small>
+                </div>
+              </article>
             </div>
-          </article>
+          </div>
 
-          <p v-if="!props.events.length" class="news-events__empty">
+          <p v-if="!sortedEvents.length" class="news-events__empty">
             No hay eventos publicados por el momento.
           </p>
         </div>
 
+        <!-- Noticias -->
         <div class="news-events__column">
           <div class="news-events__column-header">
             <h3>Noticias</h3>
+            <div class="news-events__arrows">
+              <button class="ne-arrow" :disabled="!canPrev(newsIdx)" @click="newsIdx--" aria-label="Anterior">‹</button>
+              <button class="ne-arrow" :disabled="!canNext(newsIdx, sortedNews)" @click="newsIdx++" aria-label="Siguiente">›</button>
+            </div>
           </div>
 
-          <article
-            v-for="post in props.news"
-            :key="post.id"
-            class="news-events__card card-surface"
-            @click="selectItem(post)"
-          >
-            <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" class="news-events__image" />
-            <div class="news-events__body">
-              <span class="news-events__badge news-events__badge--news">
-                {{ formatDate(post.eventDate) || 'Comunidad' }}
-              </span>
-              <h4>{{ post.title }}</h4>
-              <p>{{ post.excerpt }}</p>
-              <small v-if="post.location">{{ post.location }}</small>
+          <div class="news-events__track-wrap">
+            <div class="news-events__track" :style="{ transform: `translateX(calc(-${newsIdx} * (100% + 0.75rem)))` }">
+              <article
+                v-for="post in sortedNews"
+                :key="post.id"
+                class="news-events__card card-surface"
+                @click="selectItem(post)"
+              >
+                <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" class="news-events__image" />
+                <div class="news-events__body">
+                  <span class="news-events__badge news-events__badge--news">
+                    {{ formatDate(post.eventDate) || 'Comunidad' }}
+                  </span>
+                  <h4>{{ post.title }}</h4>
+                  <p>{{ post.excerpt }}</p>
+                  <small v-if="post.location">{{ post.location }}</small>
+                </div>
+              </article>
             </div>
-          </article>
+          </div>
 
-          <p v-if="!props.news.length" class="news-events__empty">
+          <p v-if="!sortedNews.length" class="news-events__empty">
             No hay noticias publicadas por el momento.
           </p>
         </div>
+
       </div>
     </div>
   </section>
@@ -144,17 +165,24 @@ function formatDate(value) {
   margin-inline: auto;
 }
 
-/* Lista */
-.news-events__grid {
+/* Layout */
+.news-events__columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
+  gap: 2rem;
   margin-top: 1.8rem;
 }
 
 .news-events__column {
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.news-events__column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .news-events__column-header h3 {
@@ -163,9 +191,30 @@ function formatDate(value) {
   color: var(--color-blue-dark);
 }
 
+.news-events__arrows {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Carrusel */
+.news-events__track-wrap {
+  overflow: hidden;
+}
+
+.news-events__track {
+  display: grid;
+  grid-template-columns: repeat(v-bind('sortedEvents.length'), 100%);
+  gap: 0.75rem;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.news-events__column:last-child .news-events__track {
+  grid-template-columns: repeat(v-bind('sortedNews.length'), 100%);
+}
+
 .news-events__card {
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 20px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -179,17 +228,18 @@ function formatDate(value) {
   width: 100%;
   height: 210px;
   object-fit: cover;
+  object-position: top;
 }
 
 .news-events__body {
-  padding: 1.2rem;
+  padding: 1rem;
 }
 
 .news-events__badge {
   display: inline-flex;
-  padding: 0.35rem 0.7rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
@@ -204,10 +254,10 @@ function formatDate(value) {
 }
 
 .news-events__body h4 {
-  margin-top: 0.8rem;
+  margin-top: 0.6rem;
   font-family: 'Baloo 2', 'Trebuchet MS', cursive;
-  font-size: 1.8rem;
-  line-height: 1;
+  font-size: 1.3rem;
+  line-height: 1.1;
   color: var(--color-blue-dark);
 }
 
@@ -218,13 +268,38 @@ function formatDate(value) {
 
 .news-events__body small {
   display: inline-block;
-  margin-top: 0.7rem;
+  margin-top: 0.5rem;
   color: var(--color-blue-dark);
   font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .news-events__empty {
   color: var(--color-muted);
+}
+
+/* Flechas */
+.ne-arrow {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  font-size: 1.3rem;
+  color: var(--color-blue-dark);
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.ne-arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.ne-arrow:not(:disabled):hover {
+  background: rgba(38, 118, 227, 0.1);
 }
 
 /* Detalle */
@@ -294,7 +369,7 @@ function formatDate(value) {
 }
 
 @media (max-width: 820px) {
-  .news-events__grid {
+  .news-events__columns {
     grid-template-columns: 1fr;
   }
 }

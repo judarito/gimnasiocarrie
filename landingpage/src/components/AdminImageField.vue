@@ -3,28 +3,51 @@ import { ref } from 'vue'
 import { uploadAdminImage } from '../lib/api.js'
 
 const props = defineProps({
-  modelValue: {
-    type: String,
-    default: '',
-  },
-  label: {
-    type: String,
-    default: 'Imagen',
-  },
+  modelValue: { type: String, default: '' },
+  label: { type: String, default: 'Imagen' },
+  hint: { type: String, default: '' },
+  minWidth: { type: Number, default: 0 },
+  minHeight: { type: Number, default: 0 },
 })
 
 const emit = defineEmits(['update:modelValue'])
 const uploading = ref(false)
 const error = ref('')
+const warning = ref('')
+
+function getImageDimensions(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      URL.revokeObjectURL(url)
+    }
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
+}
 
 async function handleFileChange(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
-
   if (!file) return
 
   uploading.value = true
   error.value = ''
+  warning.value = ''
+
+  // Validar dimensiones antes de subir
+  if (props.minWidth || props.minHeight) {
+    const dims = await getImageDimensions(file)
+    if (dims) {
+      const tooNarrow = props.minWidth && dims.width < props.minWidth
+      const tooShort = props.minHeight && dims.height < props.minHeight
+      if (tooNarrow || tooShort) {
+        warning.value = `La imagen mide ${dims.width} × ${dims.height} px. ${props.hint || `Se recomiendan al menos ${props.minWidth} × ${props.minHeight} px`}.`
+      }
+    }
+  }
 
   try {
     const payload = await uploadAdminImage(file)
@@ -49,17 +72,13 @@ async function handleFileChange(event) {
       />
     </label>
 
+    <p v-if="hint" class="admin-image-field__hint">{{ hint }}</p>
+
     <div class="admin-image-field__actions">
       <label class="button button--secondary admin-image-field__upload">
         {{ uploading ? 'Subiendo...' : 'Subir imagen' }}
-        <input
-          type="file"
-          accept="image/*"
-          :disabled="uploading"
-          @change="handleFileChange"
-        />
+        <input type="file" accept="image/*" :disabled="uploading" @change="handleFileChange" />
       </label>
-
       <button
         v-if="modelValue"
         type="button"
@@ -70,6 +89,7 @@ async function handleFileChange(event) {
       </button>
     </div>
 
+    <p v-if="warning" class="admin-image-field__warning">⚠ {{ warning }}</p>
     <p v-if="error" class="admin-image-field__error">{{ error }}</p>
 
     <div v-if="modelValue" class="admin-image-field__preview">
@@ -89,6 +109,13 @@ async function handleFileChange(event) {
   gap: 0.45rem;
   font-weight: 700;
   color: var(--color-blue-dark);
+}
+
+.admin-image-field__hint {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  font-weight: 600;
+  margin-top: -0.35rem;
 }
 
 .admin-image-field__actions {
@@ -116,6 +143,15 @@ async function handleFileChange(event) {
   color: #cb443e;
   font-weight: 800;
   cursor: pointer;
+}
+
+.admin-image-field__warning {
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 160, 0, 0.1);
+  color: #a06000;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .admin-image-field__error {

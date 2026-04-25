@@ -489,7 +489,13 @@ function slugify(value) {
               <label><span>Botón secundario</span><input v-model="form.hero.secondaryButtonText" type="text" /></label>
               <label class="admin__field--full"><span>Descripción</span><textarea v-model="form.hero.description" rows="4"></textarea></label>
               <div class="admin__field--full">
-                <AdminImageField v-model="form.hero.imageUrl" label="Imagen del hero" />
+                <AdminImageField
+                  v-model="form.hero.imageUrl"
+                  label="Imagen del hero"
+                  hint="Recomendado: 1280 × 800 px (proporción 16:10)"
+                  :minWidth="1280"
+                  :minHeight="800"
+                />
               </div>
             </div>
             <button type="button" class="button button--primary" :disabled="savingSection === 'hero'" @click="handleSectionSave('hero')">
@@ -527,7 +533,13 @@ function slugify(value) {
               <label class="admin__field--full"><span>Texto 2</span><textarea v-model="form.about.body2" rows="4"></textarea></label>
               <label><span>Botón</span><input v-model="form.about.buttonText" type="text" /></label>
               <div class="admin__field--full">
-                <AdminImageField v-model="form.about.imageUrl" label="Imagen de nosotros" />
+                <AdminImageField
+                  v-model="form.about.imageUrl"
+                  label="Imagen de nosotros"
+                  hint="Recomendado: 640 × 720 px (proporción 8:9, vertical)"
+                  :minWidth="640"
+                  :minHeight="720"
+                />
               </div>
             </div>
             <button type="button" class="button button--primary" :disabled="savingSection === 'about'" @click="handleSectionSave('about')">
@@ -551,6 +563,9 @@ function slugify(value) {
                     <AdminImageField
                       v-model="item.imageUrl"
                       :label="`Imagen de galería ${index + 1}`"
+                      hint="Recomendado: 800 × 600 px (proporción 4:3)"
+                      :minWidth="800"
+                      :minHeight="600"
                     />
                   </div>
                 </div>
@@ -577,7 +592,13 @@ function slugify(value) {
               </label>
               <label><span>Texto botón visita</span><input v-model="form.contact.visitButtonText" type="text" /></label>
               <div class="admin__field--full">
-                <AdminImageField v-model="form.contact.familyImageUrl" label="Imagen de familia" />
+                <AdminImageField
+                  v-model="form.contact.familyImageUrl"
+                  label="Imagen de familia"
+                  hint="Recomendado: 480 × 560 px (proporción 6:7, vertical)"
+                  :minWidth="480"
+                  :minHeight="560"
+                />
               </div>
               <label><span>Kicker ubicación</span><input v-model="form.contact.locationKicker" type="text" /></label>
               <label><span>Título ubicación</span><input v-model="form.contact.locationTitle" type="text" /></label>
@@ -764,7 +785,13 @@ function slugify(value) {
                   <input v-model="postEditor.location" type="text" />
                 </label>
                 <div class="admin__field--full">
-                  <AdminImageField v-model="postEditor.imageUrl" label="Imagen de la publicación" />
+                  <AdminImageField
+                    v-model="postEditor.imageUrl"
+                    label="Imagen de la publicación"
+                    hint="Recomendado: 900 × 500 px (proporción 16:9)"
+                    :minWidth="900"
+                    :minHeight="500"
+                  />
                 </div>
                 <label class="admin__checkbox">
                   <input v-model="postEditor.published" type="checkbox" />
