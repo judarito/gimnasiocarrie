@@ -11,7 +11,10 @@ import NewsEventsSection from './NewsEventsSection.vue'
 import ProgramsSection from './ProgramsSection.vue'
 
 const CACHE_KEY = 'gc_site_v1'
-const CACHE_TTL = Number(import.meta.env.VITE_CACHE_TTL_MS ?? 24 * 60 * 60 * 1000) // 24h por defecto
+const CACHE_TTL = Number(import.meta.env.VITE_CACHE_TTL_MS ?? 7 * 24 * 60 * 60 * 1000) // 7d por defecto
+const REFETCH_COOLDOWN = 5 * 60 * 1000 // no refrescar si el último fetch fue hace menos de 5 min
+
+let lastFetchAt = 0
 
 function saveCache(payload) {
   try {
@@ -44,9 +47,11 @@ function applyPayload(payload) {
 
 const settings = ref(cloneDefaultSiteData())
 const posts = ref(cloneDefaultPosts())
-const loading = ref(true)
 const error = ref('')
 const showScrollTop = ref(false)
+// 'idle' | 'cache' | 'fresh' | 'stale'
+const syncStatus = ref('idle')
+let freshTimer = null
 
 function onScroll() {
   showScrollTop.value = window.scrollY > 400
@@ -56,7 +61,17 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onUnmounted(() => window.removeEventListener('scroll', onScroll))
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible' && Date.now() - lastFetchAt > REFETCH_COOLDOWN) {
+    loadSite()
+  }
+}
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  clearTimeout(freshTimer)
+})
 
 const news = computed(() => posts.value.filter((post) => post.type === 'news'))
 const events = computed(() => posts.value.filter((post) => post.type === 'event'))
@@ -64,25 +79,33 @@ const events = computed(() => posts.value.filter((post) => post.type === 'event'
 onMounted(() => {
   loadSite()
   window.addEventListener('scroll', onScroll, { passive: true })
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 async function loadSite() {
-  loading.value = true
   error.value = ''
+  clearTimeout(freshTimer)
+
+  const cached = loadCache()
+  if (cached) {
+    applyPayload(cached)
+    syncStatus.value = 'cache'  // mostrando caché, API en camino
+  }
 
   try {
     const payload = await getPublicSite()
+    lastFetchAt = Date.now()
     saveCache(payload)
     applyPayload(payload)
+    syncStatus.value = 'fresh'  // info recién traída del servidor
+    freshTimer = setTimeout(() => { syncStatus.value = 'idle' }, 3000)
   } catch (loadError) {
-    const cached = loadCache()
     if (cached) {
-      applyPayload(cached)
+      syncStatus.value = 'stale'  // API falló, mostrando caché
     } else {
       error.value = loadError.message
+      syncStatus.value = 'idle'
     }
-  } finally {
-    loading.value = false
   }
 }
 </script>
@@ -117,6 +140,19 @@ async function loadSite() {
     >
       ↑
     </button>
+
+    <Transition name="sync-fade">
+      <div
+        v-if="syncStatus !== 'idle'"
+        class="sync-indicator"
+        :class="`sync-indicator--${syncStatus}`"
+      >
+        <span class="sync-indicator__dot"></span>
+        <span v-if="syncStatus === 'cache'">Caché local · actualizando…</span>
+        <span v-else-if="syncStatus === 'fresh'">Actualizado</span>
+        <span v-else-if="syncStatus === 'stale'">Sin conexión · caché local</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -155,5 +191,62 @@ async function loadSite() {
 .scroll-top:hover {
   background: rgba(38, 118, 227, 0.95);
   transform: translateY(-2px);
+}
+
+.sync-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-blue-dark);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.sync-indicator__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* cache: azul pulsante */
+.sync-indicator--cache { color: var(--color-blue-dark); }
+.sync-indicator--cache .sync-indicator__dot {
+  background: var(--color-blue);
+  animation: sync-pulse 1.4s ease-in-out infinite;
+}
+
+/* fresh: verde, estático */
+.sync-indicator--fresh { color: #2d7a1f; }
+.sync-indicator--fresh .sync-indicator__dot { background: #4caf50; }
+
+/* stale: ámbar, estático */
+.sync-indicator--stale { color: #7a4a00; }
+.sync-indicator--stale .sync-indicator__dot { background: #f59e0b; }
+
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.sync-fade-enter-active,
+.sync-fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.sync-fade-enter-from,
+.sync-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 </style>
