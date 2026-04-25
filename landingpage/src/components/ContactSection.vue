@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { submitContact } from '../lib/api.js'
 import AppIcon from './AppIcon.vue'
+import LeafletMap from './LeafletMap.vue'
 
 const props = defineProps({
   site: {
@@ -126,7 +127,11 @@ async function handleSubmit() {
         </article>
 
         <article class="contact__map card-surface" aria-label="Mapa de ubicación">
-          <img :src="props.contact.mapImageUrl" alt="Mapa de ubicación" class="contact__map-image" />
+          <LeafletMap
+            :lat="props.contact.mapLat || 3.4516"
+            :lng="props.contact.mapLng || -76.532"
+            :label="props.site.schoolName"
+          />
         </article>
       </div>
 
@@ -210,7 +215,8 @@ async function handleSubmit() {
 
 .contact__top {
   display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr) minmax(250px, 0.95fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  grid-template-rows: auto auto;
   gap: 1.25rem;
   align-items: stretch;
 }
@@ -345,6 +351,8 @@ async function handleSubmit() {
 
 .contact__map {
   overflow: hidden;
+  grid-column: 1 / -1;
+  height: 260px;
 }
 
 .contact__map-image {
@@ -422,11 +430,6 @@ async function handleSubmit() {
   .contact__top {
     grid-template-columns: 1fr 1fr;
   }
-
-  .contact__map {
-    grid-column: 1 / -1;
-    min-height: 250px;
-  }
 }
 
 @media (max-width: 820px) {
@@ -435,6 +438,10 @@ async function handleSubmit() {
   .contact__family,
   .contact__form {
     grid-template-columns: 1fr;
+  }
+
+  .contact__map {
+    min-height: 220px;
   }
 
   .contact__family {

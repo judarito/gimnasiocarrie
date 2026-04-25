@@ -581,9 +581,17 @@ function slugify(value) {
               </div>
               <label><span>Kicker ubicación</span><input v-model="form.contact.locationKicker" type="text" /></label>
               <label><span>Título ubicación</span><input v-model="form.contact.locationTitle" type="text" /></label>
-              <div class="admin__field--full">
-                <AdminImageField v-model="form.contact.mapImageUrl" label="Imagen del mapa" />
-              </div>
+              <label>
+                <span>Latitud</span>
+                <input v-model.number="form.contact.mapLat" type="number" step="0.0001" placeholder="Ej: 10.3932" />
+              </label>
+              <label>
+                <span>Longitud</span>
+                <input v-model.number="form.contact.mapLng" type="number" step="0.0001" placeholder="Ej: -75.4832" />
+              </label>
+              <p class="admin__muted admin__field--full" style="margin-top:-0.5rem; font-size:0.85rem;">
+                Busca la dirección en Google Maps, haz clic derecho sobre el punto exacto y copia las coordenadas.
+              </p>
               <label><span>Kicker formulario</span><input v-model="form.contact.formKicker" type="text" /></label>
               <label><span>Título formulario</span><input v-model="form.contact.formTitle" type="text" /></label>
               <label class="admin__field--full"><span>Descripción formulario</span><textarea v-model="form.contact.formDescription" rows="4"></textarea></label>

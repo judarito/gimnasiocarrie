@@ -116,6 +116,8 @@ export const defaultSiteData = {
     locationKicker: '¿Dónde estamos?',
     locationTitle: 'Cali, Colombia',
     mapImageUrl: '/assets/reference/map-ref.png',
+    mapLat: 3.4516,
+    mapLng: -76.532,
     formKicker: 'Contacto',
     formTitle: 'Escríbenos y agenda tu recorrido',
     formDescription:
@@ -177,13 +179,16 @@ export function cloneDefaultPosts() {
 }
 
 export function mergeSiteData(partialData = {}) {
-  const merged = cloneDefaultSiteData()
+  const defaults = cloneDefaultSiteData()
 
   for (const key of editableSectionKeys) {
     if (partialData[key] !== undefined) {
-      merged[key] = partialData[key]
+      const d = defaults[key]
+      const p = partialData[key]
+      // Arrays se reemplazan completos; objetos se mezclan para que campos nuevos hereden el default
+      defaults[key] = Array.isArray(d) ? p : { ...d, ...p }
     }
   }
 
-  return merged
+  return defaults
 }
