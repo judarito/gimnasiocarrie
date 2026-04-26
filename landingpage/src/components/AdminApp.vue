@@ -1,349 +1,34 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { cloneDefaultSiteData, mergeSiteData } from '../content/defaultSiteData.js'
-import AdminImageField from './AdminImageField.vue'
-import {
-  createAdminPost,
-  deleteAdminPost,
-  getAdminContacts,
-  getAdminPost,
-  getAdminPosts,
-  getAdminSite,
-  getSession,
-  login,
-  logout,
-  saveSection,
-  updateAdminPost,
-} from '../lib/api.js'
+import { onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAdmin } from '../lib/useAdmin.js'
+import AdminLoginForm from './admin/AdminLoginForm.vue'
+
+const router = useRouter()
+const route = useRoute()
+const { state, authLoading, initAdmin, handleLogout } = useAdmin()
 
 const tabs = [
-  { id: 'site', label: 'Sitio' },
-  { id: 'hero', label: 'Hero' },
-  { id: 'features', label: 'Metodología' },
-  { id: 'about', label: 'Nosotros' },
-  { id: 'programs', label: 'Galería' },
-  { id: 'contact', label: 'Padres y contacto' },
-  { id: 'footer', label: 'Footer' },
-  { id: 'newsSection', label: 'Noticias' },
-  { id: 'posts', label: 'Eventos y noticias' },
-  { id: 'messages', label: 'Mensajes' },
+  { id: 'site', label: 'Sitio', path: '/admin/site' },
+  { id: 'hero', label: 'Hero', path: '/admin/hero' },
+  { id: 'features', label: 'Metodología', path: '/admin/features' },
+  { id: 'about', label: 'Nosotros', path: '/admin/about' },
+  { id: 'programs', label: 'Galería', path: '/admin/programs' },
+  { id: 'contact', label: 'Padres y contacto', path: '/admin/contact' },
+  { id: 'footer', label: 'Footer', path: '/admin/footer' },
+  { id: 'news-section', label: 'Noticias', path: '/admin/news-section' },
+  { id: 'posts', label: 'Eventos y noticias', path: '/admin/posts' },
+  { id: 'messages', label: 'Mensajes', path: '/admin/messages' },
 ]
 
-const form = ref(cloneDefaultSiteData())
-const posts = ref([])
-const activeTab = ref('site')
-const loading = ref(true)
-const authLoading = ref(true)
-const user = ref(null)
-const authError = ref('')
-const successMessage = ref('')
-const savingSection = ref('')
-const savingPost = ref(false)
-const deletingPost = ref(false)
-const postListLoading = ref(false)
-const postDetailLoading = ref(false)
-const postView = ref('list')
-const postTypeFilter = ref('')
-const postPagination = ref({
-  page: 1,
-  pageSize: 8,
-  total: 0,
-  totalPages: 1,
-})
+onMounted(initAdmin)
 
-const credentials = ref({
-  email: '',
-  password: '',
-})
-
-const contacts = ref([])
-const contactsLoading = ref(false)
-const contactsPagination = ref({ page: 1, pageSize: 20, total: 0, totalPages: 1 })
-
-const postEditor = ref(createEmptyPost())
-
-const hasPreviousPostPage = computed(() => postPagination.value.page > 1)
-const hasNextPostPage = computed(() => postPagination.value.page < postPagination.value.totalPages)
-const selectedPostTitle = computed(() => postEditor.value.id ? postEditor.value.title : 'Nueva publicación')
-
-onMounted(init)
-
-async function init() {
-  authLoading.value = true
-
-  try {
-    const session = await getSession()
-    user.value = session.user
-
-    if (user.value) {
-      await loadAdminData()
-    }
-  } catch {
-    user.value = null
-  } finally {
-    authLoading.value = false
-    loading.value = false
-  }
+function isActive(path) {
+  return route.path === path
 }
 
-async function handleLogin() {
-  authError.value = ''
-  successMessage.value = ''
-  loading.value = true
-
-  try {
-    const payload = await login(credentials.value)
-    user.value = payload.user
-    credentials.value = { email: '', password: '' }
-    await loadAdminData()
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    loading.value = false
-  }
-}
-
-async function handleLogout() {
-  await logout()
-  user.value = null
-  postEditor.value = createEmptyPost()
-  authError.value = ''
-  successMessage.value = ''
-}
-
-async function loadAdminData() {
-  const payload = await getAdminSite()
-  form.value = mergeSiteData(payload.settings || {})
-  await loadPosts()
-}
-
-async function handleSectionSave(key) {
-  savingSection.value = key
-  successMessage.value = ''
-
-  try {
-    await saveSection(key, clone(form.value[key]))
-    successMessage.value = 'Cambios guardados correctamente.'
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    savingSection.value = ''
-  }
-}
-
-function addFeature() {
-  form.value.features.push({
-    icon: 'users',
-    title: 'Nuevo ítem',
-    description: '',
-    color: 'blue',
-  })
-}
-
-function addProgram() {
-  form.value.programs.items.push({
-    title: 'Nuevo elemento',
-    imageUrl: '',
-  })
-}
-
-function addFooterLink() {
-  form.value.footer.links.push({
-    label: 'Nuevo enlace',
-    href: '#',
-  })
-}
-
-function selectPost(post) {
-  activeTab.value = 'posts'
-  postView.value = 'detail'
-  loadPostDetail(post.id)
-}
-
-function newPost(type = 'event') {
-  postEditor.value = createEmptyPost(type)
-  postView.value = 'detail'
-  activeTab.value = 'posts'
-}
-
-async function loadPosts(page = postPagination.value.page) {
-  postListLoading.value = true
-  authError.value = ''
-
-  try {
-    const payload = await getAdminPosts({
-      page,
-      pageSize: postPagination.value.pageSize,
-      type: postTypeFilter.value,
-    })
-
-    posts.value = payload.items || []
-    postPagination.value = {
-      page: payload.page,
-      pageSize: payload.pageSize,
-      total: payload.total,
-      totalPages: payload.totalPages,
-    }
-
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    postListLoading.value = false
-  }
-}
-
-async function loadPostDetail(id, options = {}) {
-  postDetailLoading.value = true
-  authError.value = ''
-
-  try {
-    const payload = await getAdminPost(id)
-    postEditor.value = clone(payload.post)
-    postView.value = options.keepListVisible ? 'list' : 'detail'
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    postDetailLoading.value = false
-  }
-}
-
-async function changePostTypeFilter(type) {
-  postTypeFilter.value = type
-  postEditor.value = createEmptyPost(type || 'event')
-  postView.value = 'list'
-  await loadPosts(1)
-}
-
-async function changePostPage(direction) {
-  const nextPage = postPagination.value.page + direction
-  if (nextPage < 1 || nextPage > postPagination.value.totalPages) return
-
-  postEditor.value = createEmptyPost(postTypeFilter.value || 'event')
-  postView.value = 'list'
-  await loadPosts(nextPage)
-}
-
-async function savePost() {
-  savingPost.value = true
-  authError.value = ''
-  successMessage.value = ''
-
-  try {
-    const payload = { ...postEditor.value }
-    if (!payload.slug) {
-      payload.slug = slugify(payload.title)
-    }
-
-    const response = payload.id
-      ? await updateAdminPost(payload.id, payload)
-      : await createAdminPost(payload)
-
-    const saved = response.post
-    const index = posts.value.findIndex((post) => post.id === saved.id)
-
-    if (index >= 0) {
-      posts.value.splice(index, 1, saved)
-    } else {
-      posts.value.unshift(saved)
-    }
-
-    postEditor.value = clone(saved)
-    await loadPosts(postPagination.value.page)
-    successMessage.value = 'Publicación guardada correctamente.'
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    savingPost.value = false
-  }
-}
-
-async function removePost() {
-  if (!postEditor.value.id) return
-
-  deletingPost.value = true
-  authError.value = ''
-  successMessage.value = ''
-
-  try {
-    await deleteAdminPost(postEditor.value.id)
-    postEditor.value = createEmptyPost()
-    postView.value = 'list'
-    await loadPosts(postPagination.value.page)
-    successMessage.value = 'Publicación eliminada.'
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    deletingPost.value = false
-  }
-}
-
-async function loadContacts(page = contactsPagination.value.page) {
-  contactsLoading.value = true
-  try {
-    const payload = await getAdminContacts({ page, pageSize: contactsPagination.value.pageSize })
-    contacts.value = payload.items || []
-    contactsPagination.value = {
-      page: payload.page,
-      pageSize: payload.pageSize,
-      total: payload.total,
-      totalPages: payload.totalPages,
-    }
-  } catch (error) {
-    authError.value = error.message
-  } finally {
-    contactsLoading.value = false
-  }
-}
-
-watch(activeTab, (tab) => {
-  if (tab === 'messages' && user.value) loadContacts(1)
-})
-
-function formatDateTime(value) {
-  if (!value) return ''
-  return new Date(value).toLocaleString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value))
-}
-
-function createEmptyPost(type = 'event') {
-  return {
-    id: null,
-    type,
-    title: '',
-    slug: '',
-    excerpt: '',
-    content: '',
-    imageUrl: '',
-    location: '',
-    eventDate: '',
-    published: true,
-    sortOrder: 0,
-  }
-}
-
-function parseLines(value) {
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
-
-function slugify(value) {
-  return String(value || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
+function navigateTo(path) {
+  router.push(path)
 }
 </script>
 
@@ -356,507 +41,55 @@ function slugify(value) {
           <h1 class="admin__title">Gestor de contenido</h1>
         </div>
         <div class="admin__actions">
-          <a href="/" class="button button--secondary">Ver sitio</a>
-          <button v-if="user" type="button" class="button button--primary" @click="handleLogout">
+          <router-link to="/" class="button button--secondary">Ver sitio</router-link>
+          <button v-if="state.user" type="button" class="button button--primary" @click="handleLogout">
             Cerrar sesión
           </button>
         </div>
       </div>
 
-      <div v-if="authLoading" class="admin__panel admin__panel--center card-surface">
-        <p>Cargando sesión...</p>
+      <div v-if="authLoading" class="admin__layout">
+        <aside class="admin__sidebar card-surface skeleton-sidebar">
+          <div class="skeleton" style="height: 20px; width: 60%; margin-bottom: 1rem; border-radius: 4px;"></div>
+          <div v-for="i in 8" :key="i" class="skeleton skeleton-tab"></div>
+        </aside>
+        <section class="admin__content card-surface">
+          <div class="admin__section">
+            <div class="skeleton skeleton-title"></div>
+            <div class="admin__form-grid">
+              <div v-for="i in 6" :key="i" class="skeleton skeleton-field"></div>
+            </div>
+            <div class="skeleton skeleton-field" style="max-width: 150px; margin-top: 1rem;"></div>
+          </div>
+        </section>
       </div>
 
-      <div v-else-if="!user" class="admin__panel admin__panel--center card-surface">
-        <div class="admin__login-copy">
-          <h2>Inicia sesión</h2>
-          <p>Accede al panel para administrar textos, galería, noticias y eventos.</p>
-        </div>
-
-        <form class="admin__login-form" @submit.prevent="handleLogin">
-          <label>
-            Correo
-            <input v-model="credentials.email" type="email" required placeholder="admin@colegio.com" />
-          </label>
-
-          <label>
-            Contraseña
-            <input v-model="credentials.password" type="password" required placeholder="••••••••" />
-          </label>
-
-          <button type="submit" class="button button--primary" :disabled="loading">
-            {{ loading ? 'Ingresando...' : 'Ingresar' }}
-          </button>
-
-          <p v-if="authError" class="admin__message admin__message--error">{{ authError }}</p>
-        </form>
-      </div>
+      <AdminLoginForm v-else-if="!state.user" />
 
       <div v-else class="admin__layout">
         <aside class="admin__sidebar card-surface">
-          <p class="admin__user">{{ user.email }}</p>
+          <p class="admin__user">{{ state.user.email }}</p>
           <button
             v-for="tab in tabs"
             :key="tab.id"
             type="button"
             class="admin__tab"
-            :class="{ 'admin__tab--active': activeTab === tab.id }"
-            @click="activeTab = tab.id"
+            :class="{ 'admin__tab--active': isActive(tab.path) }"
+            @click="navigateTo(tab.path)"
           >
             {{ tab.label }}
           </button>
         </aside>
 
         <section class="admin__content card-surface">
-          <p v-if="successMessage" class="admin__message admin__message--success">
-            {{ successMessage }}
-          </p>
-          <p v-if="authError" class="admin__message admin__message--error">
-            {{ authError }}
-          </p>
-
-          <div v-if="activeTab === 'site'" class="admin__section">
-            <h2>Información del sitio</h2>
-            <div class="admin__form-grid">
-              <label>
-                Nombre del colegio
-                <input v-model="form.site.schoolName" type="text" />
-              </label>
-              <label>
-                Lema
-                <input v-model="form.site.tagline" type="text" />
-              </label>
-              <label>
-                WhatsApp
-                <input v-model="form.site.whatsappUrl" type="url" />
-              </label>
-              <label>
-                Texto del CTA
-                <input v-model="form.site.enrollLabel" type="text" />
-              </label>
-              <label>
-                Teléfono
-                <input v-model="form.site.phone" type="text" />
-              </label>
-              <label>
-                Correo
-                <input v-model="form.site.email" type="email" />
-              </label>
-              <label>
-                Horario
-                <input v-model="form.site.schedule" type="text" />
-              </label>
-              <label class="admin__field--full">
-                Dirección
-                <textarea
-                  :value="form.site.addressLines.join('\n')"
-                  rows="4"
-                  @input="form.site.addressLines = parseLines($event.target.value)"
-                ></textarea>
-              </label>
-              <label>
-                Facebook
-                <input v-model="form.site.socialLinks.facebook" type="url" />
-              </label>
-              <label>
-                Instagram
-                <input v-model="form.site.socialLinks.instagram" type="url" />
-              </label>
-              <label>
-                YouTube
-                <input v-model="form.site.socialLinks.youtube" type="url" />
-              </label>
-            </div>
-            <button
-              type="button"
-              class="button button--primary"
-              :disabled="savingSection === 'site'"
-              @click="handleSectionSave('site')"
-            >
-              {{ savingSection === 'site' ? 'Guardando...' : 'Guardar sitio' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'hero'" class="admin__section">
-            <h2>Hero</h2>
-            <div class="admin__form-grid">
-              <label><span>Kicker</span><input v-model="form.hero.kicker" type="text" /></label>
-              <label><span>Línea 1</span><input v-model="form.hero.titleLine1" type="text" /></label>
-              <label><span>Texto azul</span><input v-model="form.hero.titleBlue" type="text" /></label>
-              <label><span>Texto verde</span><input v-model="form.hero.titleGreen" type="text" /></label>
-              <label><span>Texto rojo</span><input v-model="form.hero.titleRed" type="text" /></label>
-              <label><span>Botón principal</span><input v-model="form.hero.primaryButtonText" type="text" /></label>
-              <label><span>Botón secundario</span><input v-model="form.hero.secondaryButtonText" type="text" /></label>
-              <label class="admin__field--full"><span>Descripción</span><textarea v-model="form.hero.description" rows="4"></textarea></label>
-              <div class="admin__field--full">
-                <AdminImageField
-                  v-model="form.hero.imageUrl"
-                  label="Imagen del hero"
-                  hint="Recomendado: 1280 × 800 px (proporción 16:10)"
-                  :minWidth="1280"
-                  :minHeight="800"
-                />
-              </div>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'hero'" @click="handleSectionSave('hero')">
-              {{ savingSection === 'hero' ? 'Guardando...' : 'Guardar hero' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'features'" class="admin__section">
-            <div class="admin__section-head">
-              <h2>Metodología</h2>
-              <button type="button" class="button button--secondary" @click="addFeature">Agregar ítem</button>
-            </div>
-            <div class="admin__stack">
-              <div v-for="(feature, index) in form.features" :key="index" class="admin__array-card">
-                <div class="admin__form-grid">
-                  <label><span>Ícono</span><input v-model="feature.icon" type="text" /></label>
-                  <label><span>Color</span><input v-model="feature.color" type="text" /></label>
-                  <label><span>Título</span><input v-model="feature.title" type="text" /></label>
-                  <label class="admin__field--full"><span>Descripción</span><textarea v-model="feature.description" rows="3"></textarea></label>
-                </div>
-                <button type="button" class="admin__danger-link" @click="form.features.splice(index, 1)">Eliminar</button>
-              </div>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'features'" @click="handleSectionSave('features')">
-              {{ savingSection === 'features' ? 'Guardando...' : 'Guardar metodología' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'about'" class="admin__section">
-            <h2>Sección nosotros</h2>
-            <div class="admin__form-grid">
-              <label><span>Kicker</span><input v-model="form.about.kicker" type="text" /></label>
-              <label><span>Título</span><input v-model="form.about.title" type="text" /></label>
-              <label class="admin__field--full"><span>Texto 1</span><textarea v-model="form.about.body1" rows="4"></textarea></label>
-              <label class="admin__field--full"><span>Texto 2</span><textarea v-model="form.about.body2" rows="4"></textarea></label>
-              <label><span>Botón</span><input v-model="form.about.buttonText" type="text" /></label>
-              <div class="admin__field--full">
-                <AdminImageField
-                  v-model="form.about.imageUrl"
-                  label="Imagen de nosotros"
-                  hint="Recomendado: 640 × 720 px (proporción 8:9, vertical)"
-                  :minWidth="640"
-                  :minHeight="720"
-                />
-              </div>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'about'" @click="handleSectionSave('about')">
-              {{ savingSection === 'about' ? 'Guardando...' : 'Guardar nosotros' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'programs'" class="admin__section">
-            <div class="admin__section-head">
-              <h2>Galería</h2>
-              <button type="button" class="button button--secondary" @click="addProgram">Agregar elemento</button>
-            </div>
-            <div class="admin__form-grid">
-              <label class="admin__field--full"><span>Título</span><input v-model="form.programs.title" type="text" /></label>
-            </div>
-            <div class="admin__stack">
-              <div v-for="(item, index) in form.programs.items" :key="index" class="admin__array-card">
-                <div class="admin__form-grid">
-                  <label><span>Título</span><input v-model="item.title" type="text" /></label>
-                  <div class="admin__field--full">
-                    <AdminImageField
-                      v-model="item.imageUrl"
-                      :label="`Imagen de galería ${index + 1}`"
-                      hint="Recomendado: 800 × 600 px (proporción 4:3)"
-                      :minWidth="800"
-                      :minHeight="600"
-                    />
-                  </div>
-                </div>
-                <button type="button" class="admin__danger-link" @click="form.programs.items.splice(index, 1)">Eliminar</button>
-              </div>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'programs'" @click="handleSectionSave('programs')">
-              {{ savingSection === 'programs' ? 'Guardando...' : 'Guardar galería' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'contact'" class="admin__section">
-            <h2>Padres y contacto</h2>
-            <div class="admin__form-grid">
-              <label><span>Kicker padres</span><input v-model="form.contact.parentsKicker" type="text" /></label>
-              <label><span>Título padres</span><input v-model="form.contact.parentsTitle" type="text" /></label>
-              <label class="admin__field--full">
-                <span>Puntos para padres</span>
-                <textarea
-                  :value="form.contact.parentPoints.join('\n')"
-                  rows="4"
-                  @input="form.contact.parentPoints = parseLines($event.target.value)"
-                ></textarea>
-              </label>
-              <label><span>Texto botón visita</span><input v-model="form.contact.visitButtonText" type="text" /></label>
-              <div class="admin__field--full">
-                <AdminImageField
-                  v-model="form.contact.familyImageUrl"
-                  label="Imagen de familia"
-                  hint="Recomendado: 480 × 560 px (proporción 6:7, vertical)"
-                  :minWidth="480"
-                  :minHeight="560"
-                />
-              </div>
-              <label><span>Kicker ubicación</span><input v-model="form.contact.locationKicker" type="text" /></label>
-              <label><span>Título ubicación</span><input v-model="form.contact.locationTitle" type="text" /></label>
-              <label>
-                <span>Latitud</span>
-                <input v-model.number="form.contact.mapLat" type="number" step="0.0001" placeholder="Ej: 10.3932" />
-              </label>
-              <label>
-                <span>Longitud</span>
-                <input v-model.number="form.contact.mapLng" type="number" step="0.0001" placeholder="Ej: -75.4832" />
-              </label>
-              <p class="admin__muted admin__field--full" style="margin-top:-0.5rem; font-size:0.85rem;">
-                Busca la dirección en Google Maps, haz clic derecho sobre el punto exacto y copia las coordenadas.
-              </p>
-              <label><span>Kicker formulario</span><input v-model="form.contact.formKicker" type="text" /></label>
-              <label><span>Título formulario</span><input v-model="form.contact.formTitle" type="text" /></label>
-              <label class="admin__field--full"><span>Descripción formulario</span><textarea v-model="form.contact.formDescription" rows="4"></textarea></label>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'contact'" @click="handleSectionSave('contact')">
-              {{ savingSection === 'contact' ? 'Guardando...' : 'Guardar contacto' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'footer'" class="admin__section">
-            <div class="admin__section-head">
-              <h2>Footer</h2>
-              <button type="button" class="button button--secondary" @click="addFooterLink">Agregar enlace</button>
-            </div>
-            <div class="admin__form-grid">
-              <label class="admin__field--full"><span>Copyright</span><input v-model="form.footer.copyrightText" type="text" /></label>
-            </div>
-            <div class="admin__stack">
-              <div v-for="(link, index) in form.footer.links" :key="index" class="admin__array-card">
-                <div class="admin__form-grid">
-                  <label><span>Etiqueta</span><input v-model="link.label" type="text" /></label>
-                  <label><span>Href</span><input v-model="link.href" type="text" /></label>
-                </div>
-                <button type="button" class="admin__danger-link" @click="form.footer.links.splice(index, 1)">Eliminar</button>
-              </div>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'footer'" @click="handleSectionSave('footer')">
-              {{ savingSection === 'footer' ? 'Guardando...' : 'Guardar footer' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'newsSection'" class="admin__section">
-            <h2>Encabezado de noticias y eventos</h2>
-            <div class="admin__form-grid">
-              <label><span>Kicker</span><input v-model="form.newsSection.kicker" type="text" /></label>
-              <label><span>Título</span><input v-model="form.newsSection.title" type="text" /></label>
-              <label class="admin__field--full"><span>Descripción</span><textarea v-model="form.newsSection.description" rows="4"></textarea></label>
-            </div>
-            <button type="button" class="button button--primary" :disabled="savingSection === 'newsSection'" @click="handleSectionSave('newsSection')">
-              {{ savingSection === 'newsSection' ? 'Guardando...' : 'Guardar encabezado' }}
-            </button>
-          </div>
-
-          <div v-else-if="activeTab === 'posts'" class="admin__section admin__posts">
-            <div class="admin__posts-list" :class="{ 'admin__posts-list--hidden': postView === 'detail' }">
-              <div class="admin__section-head">
-                <h2>Eventos y noticias</h2>
-                <div class="admin__quick-actions">
-                  <button type="button" class="button button--secondary" @click="newPost('event')">Nuevo evento</button>
-                  <button type="button" class="button button--secondary" @click="newPost('news')">Nueva noticia</button>
-                </div>
-              </div>
-
-              <div class="admin__post-filters">
-                <button
-                  type="button"
-                  class="admin__filter"
-                  :class="{ 'admin__filter--active': postTypeFilter === '' }"
-                  @click="changePostTypeFilter('')"
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  class="admin__filter"
-                  :class="{ 'admin__filter--active': postTypeFilter === 'event' }"
-                  @click="changePostTypeFilter('event')"
-                >
-                  Eventos
-                </button>
-                <button
-                  type="button"
-                  class="admin__filter"
-                  :class="{ 'admin__filter--active': postTypeFilter === 'news' }"
-                  @click="changePostTypeFilter('news')"
-                >
-                  Noticias
-                </button>
-              </div>
-
-              <div class="admin__post-group">
-                <p v-if="postListLoading" class="admin__muted">Cargando publicaciones...</p>
-                <p v-else-if="!posts.length" class="admin__muted">No hay publicaciones para mostrar.</p>
-                <button
-                  v-for="post in posts"
-                  :key="post.id"
-                  type="button"
-                  class="admin__post-item"
-                  :class="{ 'admin__post-item--active': postEditor.id === post.id }"
-                  @click="selectPost(post)"
-                >
-                  <strong>{{ post.title }}</strong>
-                  <span>
-                    {{ post.type === 'event' ? 'Evento' : 'Noticia' }}
-                    ·
-                    {{ post.eventDate || 'Sin fecha' }}
-                    ·
-                    {{ post.published ? 'Publicado' : 'Borrador' }}
-                  </span>
-                </button>
-              </div>
-
-              <div class="admin__pagination">
-                <button
-                  type="button"
-                  class="button button--secondary"
-                  :disabled="!hasPreviousPostPage || postListLoading"
-                  @click="changePostPage(-1)"
-                >
-                  Anterior
-                </button>
-                <span>
-                  Página {{ postPagination.page }} de {{ postPagination.totalPages }}
-                </span>
-                <button
-                  type="button"
-                  class="button button--secondary"
-                  :disabled="!hasNextPostPage || postListLoading"
-                  @click="changePostPage(1)"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-
-            <div class="admin__post-editor" :class="{ 'admin__post-editor--hidden': postView === 'list' }">
-              <div class="admin__detail-head">
-                <button type="button" class="admin__back-button" @click="postView = 'list'">
-                  Volver al listado
-                </button>
-                <h3>{{ selectedPostTitle }}</h3>
-              </div>
-
-              <p v-if="postDetailLoading" class="admin__muted">Cargando detalle...</p>
-
-              <div class="admin__form-grid">
-                <label>
-                  <span>Tipo</span>
-                  <select v-model="postEditor.type">
-                    <option value="event">Evento</option>
-                    <option value="news">Noticia</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Orden</span>
-                  <input v-model.number="postEditor.sortOrder" type="number" />
-                </label>
-                <label class="admin__field--full">
-                  <span>Título</span>
-                  <input v-model="postEditor.title" type="text" />
-                </label>
-                <label class="admin__field--full">
-                  <span>Slug</span>
-                  <input v-model="postEditor.slug" type="text" placeholder="se genera si lo dejas vacío" />
-                </label>
-                <label class="admin__field--full">
-                  <span>Extracto</span>
-                  <textarea v-model="postEditor.excerpt" rows="3"></textarea>
-                </label>
-                <label class="admin__field--full">
-                  <span>Contenido</span>
-                  <textarea v-model="postEditor.content" rows="5"></textarea>
-                </label>
-                <label>
-                  <span>Fecha</span>
-                  <input v-model="postEditor.eventDate" type="date" />
-                </label>
-                <label>
-                  <span>Ubicación</span>
-                  <input v-model="postEditor.location" type="text" />
-                </label>
-                <div class="admin__field--full">
-                  <AdminImageField
-                    v-model="postEditor.imageUrl"
-                    label="Imagen de la publicación"
-                    hint="Recomendado: 900 × 500 px (proporción 16:9)"
-                    :minWidth="900"
-                    :minHeight="500"
-                  />
-                </div>
-                <label class="admin__checkbox">
-                  <input v-model="postEditor.published" type="checkbox" />
-                  Publicado
-                </label>
-              </div>
-
-              <div class="admin__quick-actions">
-                <button type="button" class="button button--primary" :disabled="savingPost" @click="savePost">
-                  {{ savingPost ? 'Guardando...' : 'Guardar publicación' }}
-                </button>
-                <button
-                  v-if="postEditor.id"
-                  type="button"
-                  class="button admin__button-danger"
-                  :disabled="deletingPost"
-                  @click="removePost"
-                >
-                  {{ deletingPost ? 'Eliminando...' : 'Eliminar' }}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div v-else-if="activeTab === 'messages'" class="admin__section">
-            <h2>Mensajes de contacto</h2>
-            <p v-if="contactsLoading" class="admin__muted">Cargando mensajes...</p>
-            <p v-else-if="!contacts.length" class="admin__muted">No hay mensajes todavía.</p>
-            <div v-else class="admin__stack">
-              <div v-for="msg in contacts" :key="msg.id" class="admin__array-card admin__message-card">
-                <div class="admin__message-meta">
-                  <strong>{{ msg.name }}</strong>
-                  <a :href="`mailto:${msg.email}`" class="admin__message-email">{{ msg.email }}</a>
-                  <span class="admin__muted">{{ formatDateTime(msg.created_at) }}</span>
-                </div>
-                <p class="admin__message-body">{{ msg.message }}</p>
-              </div>
-            </div>
-            <div v-if="contactsPagination.totalPages > 1" class="admin__pagination">
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="contactsPagination.page <= 1 || contactsLoading"
-                @click="loadContacts(contactsPagination.page - 1)"
-              >
-                Anterior
-              </button>
-              <span>Página {{ contactsPagination.page }} de {{ contactsPagination.totalPages }}</span>
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="contactsPagination.page >= contactsPagination.totalPages || contactsLoading"
-                @click="loadContacts(contactsPagination.page + 1)"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-
+          <router-view />
         </section>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
+<style>
 .section-kicker--blue {
   background: rgba(38, 118, 227, 0.12);
   color: var(--color-blue);
@@ -901,6 +134,41 @@ function slugify(value) {
 .admin__content {
   padding: 1.4rem;
   border-radius: 28px;
+}
+
+/* Skeletons */
+.skeleton {
+  background: #e1e7ef;
+  animation: skeleton-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes skeleton-pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.skeleton-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.skeleton-tab {
+  height: 48px;
+  border-radius: 18px;
+}
+
+.skeleton-title {
+  height: 38px;
+  width: 180px;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-field {
+  height: 52px;
+  border-radius: 16px;
 }
 
 .admin__panel--center {

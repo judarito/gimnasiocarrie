@@ -15,17 +15,26 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
+    "@tiptap/pm": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
+    "@tiptap/vue-3": "^3.22.4",
     "cloudinary": "^2.9.0",
     "concurrently": "^9.2.1",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
     "leaflet": "^1.9.4",
     "multer": "^2.1.1",
-    "vue": "^3.5.32"
+    "vue": "^3.5.32",
+    "vue-router": "^5.0.6",
+    "vue3-toastify": "^0.2.9",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",
     "dotenv": "^17.4.2",
+    "eslint": "^10.2.1",
+    "eslint-plugin-vue": "^10.9.0",
     "vite": "^8.0.10"
   }
 }

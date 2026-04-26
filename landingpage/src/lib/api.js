@@ -50,8 +50,9 @@ async function request(url, options = {}) {
   }
 
   const maxAttempts = isIdempotent(options.method) ? RETRY_CONFIG.retries + 1 : 1
+  const isSilent = options.silent === true
 
-  pendingRequests.value++
+  if (!isSilent) pendingRequests.value++
   let lastError
   try {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -84,12 +85,12 @@ async function request(url, options = {}) {
 
   throw lastError
   } finally {
-    pendingRequests.value--
+    if (!isSilent) pendingRequests.value--
   }
 }
 
 export function getPublicSite() {
-  return request('/api/public/site')
+  return request('/api/public/site', { silent: true })
 }
 
 export function submitContact(contact) {

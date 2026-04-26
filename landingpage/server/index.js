@@ -1,9 +1,11 @@
 import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import express from 'express'
+import rateLimit from 'express-rate-limit'
 import multer from 'multer'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loginSchema, contactSchema, postSchema, validate } from './validators.js'
 import {
   createSessionExpiryDate,
   createSessionToken,
@@ -57,6 +59,19 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024,
   },
 })
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: 'Demasiadas peticiones, por favor intenta más tarde.' },
+})
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // limit each IP to 10 login requests per hour
+  message: { error: 'Demasiados intentos de inicio de sesión, intenta en una hora.' },
+})
+
 let publicSiteCache = null
 let publicSiteCachePromise = null
 let publicSiteCacheVersion = 0
@@ -84,6 +99,7 @@ app.use((request, response, next) => {
 
 app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
+app.use('/api/', limiter)
 
 app.get('/api/health', async (_request, response) => {
   response.json({ ok: true, databaseUrl, cloudinaryConfigured: isCloudinaryConfigured })
@@ -124,24 +140,19 @@ app.get('/api/public/site', async (_request, response, next) => {
 
 app.post('/api/public/contacts', async (request, response, next) => {
   try {
-    const { name, email, message } = request.body || {}
-    if (!name || !email || !message) {
-      return response.status(400).json({ error: 'Nombre, correo y mensaje son obligatorios.' })
-    }
-
-    await createContact({ name, email, message })
+    const data = validate(contactSchema, request.body || {})
+    await createContact(data)
     response.status(201).json({ ok: true })
   } catch (error) {
     next(error)
   }
 })
 
-app.post('/api/auth/login', async (request, response, next) => {
+app.post('/api/auth/login', authLimiter, async (request, response, next) => {
   try {
-    const { email, password } = request.body || {}
-    if (!email || !password) {
-      return response.status(400).json({ error: 'Correo y contraseña son obligatorios.' })
-    }
+    const data = validate(loginSchema, request.body || {})
+    const email = data.email.toLowerCase().trim()
+    const password = data.password
 
     const user = await findUserByEmail(email.toLowerCase().trim())
     if (!user) {
@@ -283,7 +294,9 @@ app.get('/api/admin/posts/:id', requireAuth, async (request, response, next) => 
 
 app.post('/api/admin/posts', requireAuth, async (request, response, next) => {
   try {
-    const post = normalizePostPayload(request.body)
+    const post = validate(postSchema, request.body)
+    if (!post.slug) post.slug = slugify(post.title)
+    
     const createdPost = await createPost(post)
     invalidatePublicSiteCache()
     response.status(201).json({ post: createdPost })
@@ -300,7 +313,9 @@ app.put('/api/admin/posts/:id', requireAuth, async (request, response, next) => 
       return response.status(404).json({ error: 'Publicación no encontrada.' })
     }
 
-    const post = normalizePostPayload(request.body)
+    const post = validate(postSchema, request.body)
+    if (!post.slug) post.slug = slugify(post.title)
+    
     const updated = await updatePost(id, post)
     invalidatePublicSiteCache()
     response.json({ post: updated })
@@ -359,7 +374,8 @@ app.get('/{*splat}', (request, response, next) => {
 
 app.use((error, _request, response, _next) => {
   console.error(error)
-  response.status(500).json({
+  const status = error.status || 500
+  response.status(status).json({
     error: error.message || 'Ocurrió un error inesperado.',
   })
 })
@@ -419,24 +435,4 @@ async function getAuthenticatedUser(request) {
   return findUserById(session.user_id)
 }
 
-function normalizePostPayload(payload = {}) {
-  const title = String(payload.title || '').trim()
-  const type = payload.type === 'news' ? 'news' : 'event'
-
-  if (!title) {
-    throw new Error('El título es obligatorio.')
-  }
-
-  return {
-    type,
-    title,
-    slug: String(payload.slug || slugify(title)).trim() || slugify(title),
-    excerpt: String(payload.excerpt || '').trim(),
-    content: String(payload.content || '').trim(),
-    imageUrl: String(payload.imageUrl || '').trim(),
-    location: String(payload.location || '').trim(),
-    eventDate: String(payload.eventDate || '').trim(),
-    published: Boolean(payload.published),
-    sortOrder: Number(payload.sortOrder || 0),
-  }
-}
+// Removed normalizePostPayload as it is replaced by Zod

@@ -103,6 +103,7 @@ async function loadSite() {
     if (cached) {
       syncStatus.value = 'stale'  // API falló, mostrando caché
     } else {
+      console.warn('Backend no respondió, usando datos locales:', loadError.message)
       error.value = loadError.message
       syncStatus.value = 'idle'
     }
@@ -112,15 +113,6 @@ async function loadSite() {
 
 <template>
   <div class="app-shell">
-    <div v-if="error" class="public-alert">
-      <div class="container">
-        <p>
-          Mostrando contenido local porque el backend no respondió:
-          {{ error }}
-        </p>
-      </div>
-    </div>
-
     <HeroSection :site="settings.site" :hero="settings.hero" />
     <main>
       <FeaturesSection :items="settings.features" />
@@ -160,14 +152,6 @@ async function loadSite() {
 .app-shell {
   min-height: 100vh;
 }
-
-.public-alert {
-  padding: 0.75rem 0;
-  background: rgba(255, 80, 71, 0.1);
-  color: #b83f38;
-  font-weight: 700;
-}
-
 
 .scroll-top {
   position: fixed;

@@ -1,17 +1,24 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onErrorCaptured } from 'vue'
 import { pendingRequests } from './lib/api.js'
-import AdminApp from './components/AdminApp.vue'
-import PublicLanding from './components/PublicLanding.vue'
 
-const isAdminRoute = window.location.pathname.startsWith('/admin')
 const isLoading = computed(() => pendingRequests.value > 0)
+const globalError = ref(null)
+
+onErrorCaptured((err) => {
+  globalError.value = err.message + '\n' + err.stack
+  return false // prevent propagation
+})
 </script>
 
 <template>
+  <div v-if="globalError" style="position: fixed; inset: 0; z-index: 10000; background: white; padding: 20px; color: red; overflow: auto;">
+    <h1>Error Crítico</h1>
+    <pre>{{ globalError }}</pre>
+    <button @click="globalError = null">Cerrar</button>
+  </div>
   <div class="global-loading-bar" :class="{ 'global-loading-bar--active': isLoading }"></div>
-  <AdminApp v-if="isAdminRoute" />
-  <PublicLanding v-else />
+  <router-view />
 </template>
 
 <style>
