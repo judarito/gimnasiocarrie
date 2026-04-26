@@ -33,7 +33,13 @@ import {
   runMigrations,
   updatePost,
   updateSiteSetting,
+  getSiteSettingHistory,
+  restoreSiteSettingHistory,
+  createMedia,
+  listMedia,
+  deleteMedia,
 } from './repository.js'
+import { v2 as cloudinary } from 'cloudinary'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -237,6 +243,25 @@ app.get('/api/admin/site', requireAuth, async (_request, response, next) => {
   }
 })
 
+app.get('/api/admin/site/:key/history', requireAuth, async (request, response, next) => {
+  try {
+    const history = await getSiteSettingHistory(request.params.key)
+    response.json({ history })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/admin/site/history/:id/restore', requireAuth, async (request, response, next) => {
+  try {
+    const newValue = await restoreSiteSettingHistory(Number(request.params.id))
+    invalidatePublicSiteCache()
+    response.json({ restoredValue: newValue })
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.put('/api/admin/site/:key', requireAuth, async (request, response, next) => {
   try {
     const { key } = request.params
@@ -355,15 +380,45 @@ app.post(
         folder: process.env.CLOUDINARY_UPLOAD_FOLDER,
       })
 
+      const mediaRecord = await createMedia(result.secure_url, result.public_id)
+
       response.status(201).json({
-        url: result.secure_url,
-        publicId: result.public_id,
+        url: mediaRecord.url,
+        publicId: mediaRecord.publicId,
       })
     } catch (error) {
       next(error)
     }
   },
 )
+
+app.get('/api/admin/media', requireAuth, async (_request, response, next) => {
+  try {
+    const mediaList = await listMedia()
+    response.json({ items: mediaList })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/admin/media/:id', requireAuth, async (request, response, next) => {
+  try {
+    const publicId = await deleteMedia(Number(request.params.id))
+    
+    if (publicId && isCloudinaryConfigured) {
+      // Intentar borrar de Cloudinary. Si falla, al menos se borró de DB.
+      try {
+        await cloudinary.uploader.destroy(publicId)
+      } catch (e) {
+        console.error('Failed to destroy Cloudinary image:', e)
+      }
+    }
+    
+    response.json({ ok: true })
+  } catch (error) {
+    next(error)
+  }
+})
 
 app.use(express.static(distDir))
 

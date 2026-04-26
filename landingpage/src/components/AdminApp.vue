@@ -19,6 +19,7 @@ const tabs = [
   { id: 'news-section', label: 'Noticias', path: '/admin/news-section' },
   { id: 'posts', label: 'Eventos y noticias', path: '/admin/posts' },
   { id: 'messages', label: 'Mensajes', path: '/admin/messages' },
+  { id: 'gallery', label: 'Archivos (Galería)', path: '/admin/gallery' },
 ]
 
 onMounted(initAdmin)

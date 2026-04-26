@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 
 const { state, savingSection, handleSectionSave } = useAdmin()
@@ -8,6 +10,12 @@ function addFooterLink() {
     label: 'Nuevo enlace',
     href: '#',
   })
+}
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['footer'] = newData
+  showHistory.value = false
 }
 </script>
 
@@ -29,8 +37,19 @@ function addFooterLink() {
         <button type="button" class="admin__danger-link" @click="state.form.footer.links.splice(index, 1)">Eliminar</button>
       </div>
     </div>
-    <button type="button" class="button button--primary" :disabled="savingSection === 'footer'" @click="handleSectionSave('footer')">
+    <div class="admin__actions" style="margin-top: 1rem;">
+      <button type="button" class="button button--primary" :disabled="savingSection === 'footer'" @click="handleSectionSave('footer')">
       {{ savingSection === 'footer' ? 'Guardando...' : 'Guardar footer' }}
     </button>
+      <button type="button" class="button button--secondary" @click="showHistory = true">
+        Ver historial
+      </button>
+    </div>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="footer"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>

@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 
 const { state, savingSection, handleSectionSave } = useAdmin()
@@ -10,6 +12,12 @@ function addFeature() {
     description: '',
     color: 'blue',
   })
+}
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['features'] = newData
+  showHistory.value = false
 }
 </script>
 
@@ -30,8 +38,19 @@ function addFeature() {
         <button type="button" class="admin__danger-link" @click="state.form.features.splice(index, 1)">Eliminar</button>
       </div>
     </div>
-    <button type="button" class="button button--primary" :disabled="savingSection === 'features'" @click="handleSectionSave('features')">
+    <div class="admin__actions" style="margin-top: 1rem;">
+      <button type="button" class="button button--primary" :disabled="savingSection === 'features'" @click="handleSectionSave('features')">
       {{ savingSection === 'features' ? 'Guardando...' : 'Guardar metodología' }}
     </button>
+      <button type="button" class="button button--secondary" @click="showHistory = true">
+        Ver historial
+      </button>
+    </div>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="features"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import CloudinaryImage from './CloudinaryImage.vue'
 
 const props = defineProps({
   programs: {
@@ -78,7 +79,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
               class="programs__card card-surface"
               @click="openZoom(item)"
             >
-              <img :src="item.imageUrl" :alt="item.title" class="programs__image" />
+              <CloudinaryImage :src="item.imageUrl" :alt="item.title" className="programs__image" width="600" />
               <div v-if="item.title" class="programs__caption">{{ item.title }}</div>
             </article>
           </div>
@@ -110,7 +111,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         <button class="programs__lb-close" aria-label="Cerrar" @click="closeZoom">✕</button>
         <button class="programs__lb-arrow programs__lb-arrow--prev" :disabled="items.indexOf(zoomed) === 0" @click="zoomPrev">‹</button>
         <div class="programs__lb-content">
-          <img :src="zoomed.imageUrl" :alt="zoomed.title" class="programs__lb-image" />
+          <CloudinaryImage :src="zoomed.imageUrl" :alt="zoomed.title" className="programs__lb-image" width="1200" />
           <p v-if="zoomed.title" class="programs__lb-caption">{{ zoomed.title }}</p>
         </div>
         <button class="programs__lb-arrow programs__lb-arrow--next" :disabled="items.indexOf(zoomed) === total - 1" @click="zoomNext">›</button>

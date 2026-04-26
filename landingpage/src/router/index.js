@@ -13,6 +13,7 @@ import AdminFooter from '../components/admin/AdminFooter.vue'
 import AdminNewsSection from '../components/admin/AdminNewsSection.vue'
 import AdminPostsManager from '../components/admin/AdminPostsManager.vue'
 import AdminMessages from '../components/admin/AdminMessages.vue'
+import AdminGallery from '../components/admin/AdminGallery.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -38,6 +39,7 @@ const router = createRouter({
         { path: 'news-section', name: 'admin-news-section', component: AdminNewsSection },
         { path: 'posts', name: 'admin-posts', component: AdminPostsManager },
         { path: 'messages', name: 'admin-messages', component: AdminMessages },
+        { path: 'gallery', name: 'admin-gallery', component: AdminGallery },
       ],
     },
     {

@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 import AdminImageField from '../AdminImageField.vue'
 
@@ -9,6 +11,12 @@ function addProgram() {
     title: 'Nuevo elemento',
     imageUrl: '',
   })
+}
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['programs'] = newData
+  showHistory.value = false
 }
 </script>
 
@@ -38,8 +46,19 @@ function addProgram() {
         <button type="button" class="admin__danger-link" @click="state.form.programs.items.splice(index, 1)">Eliminar</button>
       </div>
     </div>
-    <button type="button" class="button button--primary" :disabled="savingSection === 'programs'" @click="handleSectionSave('programs')">
+    <div class="admin__actions" style="margin-top: 1rem;">
+      <button type="button" class="button button--primary" :disabled="savingSection === 'programs'" @click="handleSectionSave('programs')">
       {{ savingSection === 'programs' ? 'Guardando...' : 'Guardar galería' }}
     </button>
+      <button type="button" class="button button--secondary" @click="showHistory = true">
+        Ver historial
+      </button>
+    </div>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="programs"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>

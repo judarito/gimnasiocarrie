@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 
 const { state, savingSection, handleSectionSave } = useAdmin()
@@ -8,6 +10,12 @@ function parseLines(value) {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+}
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['site'] = newData
+  showHistory.value = false
 }
 </script>
 
@@ -73,4 +81,10 @@ function parseLines(value) {
       {{ savingSection === 'site' ? 'Guardando...' : 'Guardar sitio' }}
     </button>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="site"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>

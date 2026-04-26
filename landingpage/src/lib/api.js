@@ -171,3 +171,19 @@ export function uploadAdminImage(file) {
     body: formData,
   })
 }
+
+export function getAdminMedia() {
+  return request('/api/admin/media')
+}
+
+export function deleteAdminMedia(id) {
+  return request(`/api/admin/media/${id}`, { method: 'DELETE' })
+}
+
+export function getAdminSiteHistory(key) {
+  return request(`/api/admin/site/${key}/history`)
+}
+
+export function restoreAdminSiteHistory(id) {
+  return request(`/api/admin/site/history/${id}/restore`, { method: 'POST' })
+}

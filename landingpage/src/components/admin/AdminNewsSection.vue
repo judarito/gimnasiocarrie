@@ -1,7 +1,15 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 
 const { state, savingSection, handleSectionSave } = useAdmin()
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['newsSection'] = newData
+  showHistory.value = false
+}
 </script>
 
 <template>
@@ -12,8 +20,19 @@ const { state, savingSection, handleSectionSave } = useAdmin()
       <label><span>Título</span><input v-model="state.form.newsSection.title" type="text" /></label>
       <label class="admin__field--full"><span>Descripción</span><textarea v-model="state.form.newsSection.description" rows="4"></textarea></label>
     </div>
-    <button type="button" class="button button--primary" :disabled="savingSection === 'newsSection'" @click="handleSectionSave('newsSection')">
+    <div class="admin__actions" style="margin-top: 1rem;">
+      <button type="button" class="button button--primary" :disabled="savingSection === 'newsSection'" @click="handleSectionSave('newsSection')">
       {{ savingSection === 'newsSection' ? 'Guardando...' : 'Guardar encabezado' }}
     </button>
+      <button type="button" class="button button--secondary" @click="showHistory = true">
+        Ver historial
+      </button>
+    </div>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="newsSection"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>

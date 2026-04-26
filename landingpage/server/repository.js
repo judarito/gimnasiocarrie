@@ -64,6 +64,22 @@ export async function runMigrations() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `,
+    `
+      CREATE TABLE IF NOT EXISTS site_settings_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    `
+      CREATE TABLE IF NOT EXISTS media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        public_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
   ]
 
   for (const sql of statements) {
@@ -130,6 +146,16 @@ export async function updateSiteSetting(key, value) {
     throw new Error(`Section "${key}" is not editable.`)
   }
 
+  const valueStr = JSON.stringify(value)
+
+  await db.execute({
+    sql: `
+      INSERT INTO site_settings_history (key, value)
+      VALUES (?, ?)
+    `,
+    args: [key, valueStr],
+  })
+
   await db.execute({
     sql: `
       INSERT INTO site_settings (key, value, updated_at)
@@ -138,10 +164,78 @@ export async function updateSiteSetting(key, value) {
         value = excluded.value,
         updated_at = CURRENT_TIMESTAMP
     `,
-    args: [key, JSON.stringify(value)],
+    args: [key, valueStr],
   })
 
   return value
+}
+
+export async function getSiteSettingHistory(key) {
+  const result = await db.execute({
+    sql: `
+      SELECT id, key, value, created_at
+      FROM site_settings_history
+      WHERE key = ?
+      ORDER BY created_at DESC
+      LIMIT 20
+    `,
+    args: [key],
+  })
+
+  return result.rows.map(row => ({
+    id: row.id,
+    key: row.key,
+    value: JSON.parse(row.value),
+    createdAt: row.created_at,
+  }))
+}
+
+export async function restoreSiteSettingHistory(historyId) {
+  const result = await db.execute({
+    sql: `SELECT key, value FROM site_settings_history WHERE id = ? LIMIT 1`,
+    args: [historyId],
+  })
+  
+  const historyRecord = result.rows[0]
+  if (!historyRecord) throw new Error('History record not found')
+
+  await updateSiteSetting(historyRecord.key, JSON.parse(historyRecord.value))
+  return JSON.parse(historyRecord.value)
+}
+
+export async function createMedia(url, publicId) {
+  await db.execute({
+    sql: `INSERT INTO media (url, public_id) VALUES (?, ?)`,
+    args: [url, publicId],
+  })
+  return { url, publicId }
+}
+
+export async function listMedia() {
+  const result = await db.execute('SELECT id, url, public_id, created_at FROM media ORDER BY created_at DESC')
+  return result.rows.map(row => ({
+    id: row.id,
+    url: row.url,
+    publicId: row.public_id,
+    createdAt: row.created_at,
+  }))
+}
+
+export async function deleteMedia(id) {
+  const result = await db.execute({
+    sql: 'SELECT public_id FROM media WHERE id = ? LIMIT 1',
+    args: [id]
+  })
+  const media = result.rows[0]
+  
+  if (media) {
+    await db.execute({
+      sql: 'DELETE FROM media WHERE id = ?',
+      args: [id],
+    })
+    return media.public_id
+  }
+  return null
 }
 
 export async function listPosts({ type, publishedOnly = false } = {}) {

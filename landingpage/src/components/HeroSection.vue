@@ -1,5 +1,6 @@
 <script setup>
 import AppIcon from './AppIcon.vue'
+import CloudinaryImage from './CloudinaryImage.vue'
 
 const props = defineProps({
   site: {
@@ -94,10 +95,11 @@ const adminNavItem = { label: 'Admin', href: '/admin/login' }
       </div>
 
       <div class="hero__visual">
-        <img
+        <CloudinaryImage
           :src="props.hero.imageUrl"
           alt="Niños compartiendo una actividad con piezas de rompecabezas"
-          class="hero__image"
+          className="hero__image"
+          width="800"
         />
       </div>
     </div>

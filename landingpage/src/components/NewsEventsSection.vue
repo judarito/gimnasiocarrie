@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import CloudinaryImage from './CloudinaryImage.vue'
 
 const props = defineProps({
   section: { type: Object, required: true },
@@ -51,11 +52,12 @@ function formatDate(value) {
       <!-- Vista detalle -->
       <div v-if="selectedItem" class="news-events__detail card-surface">
         <button class="news-events__back" @click="clearSelection">← Volver</button>
-        <img
+        <CloudinaryImage
           v-if="selectedItem.imageUrl"
           :src="selectedItem.imageUrl"
           :alt="selectedItem.title"
-          class="news-events__detail-image"
+          className="news-events__detail-image"
+          width="1000"
         />
         <div class="news-events__detail-body">
           <span
@@ -92,7 +94,7 @@ function formatDate(value) {
                 class="news-events__card card-surface"
                 @click="selectItem(post)"
               >
-                <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" class="news-events__image" />
+                <CloudinaryImage v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" className="news-events__image" width="600" />
                 <div class="news-events__body">
                   <span class="news-events__badge news-events__badge--event">
                     {{ formatDate(post.eventDate) || 'Próximamente' }}
@@ -128,7 +130,7 @@ function formatDate(value) {
                 class="news-events__card card-surface"
                 @click="selectItem(post)"
               >
-                <img v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" class="news-events__image" />
+                <CloudinaryImage v-if="post.imageUrl" :src="post.imageUrl" :alt="post.title" className="news-events__image" width="600" />
                 <div class="news-events__body">
                   <span class="news-events__badge news-events__badge--news">
                     {{ formatDate(post.eventDate) || 'Comunidad' }}

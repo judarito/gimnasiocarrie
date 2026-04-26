@@ -1,4 +1,6 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 import AdminImageField from '../AdminImageField.vue'
 
@@ -9,6 +11,12 @@ function parseLines(value) {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+}
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['contact'] = newData
+  showHistory.value = false
 }
 </script>
 
@@ -53,8 +61,19 @@ function parseLines(value) {
       <label><span>Título formulario</span><input v-model="state.form.contact.formTitle" type="text" /></label>
       <label class="admin__field--full"><span>Descripción formulario</span><textarea v-model="state.form.contact.formDescription" rows="4"></textarea></label>
     </div>
-    <button type="button" class="button button--primary" :disabled="savingSection === 'contact'" @click="handleSectionSave('contact')">
+    <div class="admin__actions" style="margin-top: 1rem;">
+      <button type="button" class="button button--primary" :disabled="savingSection === 'contact'" @click="handleSectionSave('contact')">
       {{ savingSection === 'contact' ? 'Guardando...' : 'Guardar contacto' }}
     </button>
+      <button type="button" class="button button--secondary" @click="showHistory = true">
+        Ver historial
+      </button>
+    </div>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="contact"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>

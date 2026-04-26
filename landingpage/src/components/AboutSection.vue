@@ -1,4 +1,6 @@
 <script setup>
+import CloudinaryImage from './CloudinaryImage.vue'
+
 defineProps({
   about: {
     type: Object,
@@ -12,10 +14,11 @@ defineProps({
     <div class="container about__grid">
       <div class="about__photo-wrap">
         <span class="about__puzzle puzzle-piece"></span>
-        <img
+        <CloudinaryImage
           :src="about.imageUrl"
           alt="Docente acompañando a un estudiante"
-          class="about__photo card-surface"
+          className="about__photo card-surface"
+          width="800"
         />
       </div>
 

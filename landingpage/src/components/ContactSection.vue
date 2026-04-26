@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { submitContact } from '../lib/api.js'
 import AppIcon from './AppIcon.vue'
 import LeafletMap from './LeafletMap.vue'
+import CloudinaryImage from './CloudinaryImage.vue'
 
 const props = defineProps({
   site: {
@@ -93,10 +94,11 @@ async function handleSubmit() {
           </div>
 
           <div class="contact__family-visual">
-            <img
+            <CloudinaryImage
               :src="props.contact.familyImageUrl"
               alt="Familia revisando información en un computador"
-              class="contact__family-image"
+              className="contact__family-image"
+              width="600"
             />
           </div>
         </article>

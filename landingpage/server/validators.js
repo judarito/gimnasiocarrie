@@ -27,7 +27,9 @@ export const postSchema = z.object({
 export function validate(schema, data) {
   const result = schema.safeParse(data)
   if (!result.success) {
-    const error = new Error(result.error.errors.map(e => e.message).join(', '))
+    const issues = result.error?.errors || result.error?.issues || []
+    const message = issues.map(e => e.message).join(', ') || 'Error de validación'
+    const error = new Error(message)
     error.status = 400
     throw error
   }

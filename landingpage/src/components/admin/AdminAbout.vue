@@ -1,8 +1,16 @@
 <script setup>
+import { ref } from 'vue'
+import AdminHistoryModal from './AdminHistoryModal.vue'
 import { useAdmin } from '../../lib/useAdmin.js'
 import AdminImageField from '../AdminImageField.vue'
 
 const { state, savingSection, handleSectionSave } = useAdmin()
+const showHistory = ref(false)
+
+function onHistoryRestored(newData) {
+  state.form['about'] = newData
+  showHistory.value = false
+}
 </script>
 
 <template>
@@ -24,8 +32,19 @@ const { state, savingSection, handleSectionSave } = useAdmin()
         />
       </div>
     </div>
-    <button type="button" class="button button--primary" :disabled="savingSection === 'about'" @click="handleSectionSave('about')">
+    <div class="admin__actions" style="margin-top: 1rem;">
+      <button type="button" class="button button--primary" :disabled="savingSection === 'about'" @click="handleSectionSave('about')">
       {{ savingSection === 'about' ? 'Guardando...' : 'Guardar nosotros' }}
     </button>
+      <button type="button" class="button button--secondary" @click="showHistory = true">
+        Ver historial
+      </button>
+    </div>
   </div>
+  <AdminHistoryModal
+      v-if="showHistory"
+      sectionKey="about"
+      @close="showHistory = false"
+      @restored="onHistoryRestored"
+    />
 </template>
